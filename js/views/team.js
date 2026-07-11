@@ -1,5 +1,9 @@
 import { h, mount, showToast, formatDate, avatarColorClass, emptyState } from '../components/dom.js';
-import { rosterMembers, overallCompletionForUser, workoutsForCurrentUser, deleteWorkout, adminOrganizations, switchOrganization, getState } from '../store.js';
+import {
+  rosterMembers, overallCompletionForUser, workoutsForCurrentUser, deleteWorkout,
+  adminOrganizations, switchOrganization, getState, reportsVisibleToModerator,
+  resolveReport, directoryName,
+} from '../store.js';
 import { ICONS } from '../components/icons.js';
 import { organizationDisplayName } from '../models.js';
 
@@ -36,12 +40,28 @@ function workoutManageRow(workout) {
     </div>`;
 }
 
+function reportRow(report) {
+  const reasonLabel = { message: 'Message', clip: 'Clip', comment: 'Comment', user: 'Account' }[report.targetType] || 'Content';
+  return `
+    <div class="card stack gap-sm" data-report-id="${report.id}">
+      <div class="row-between">
+        <div class="caption" style="font-weight:700; color:var(--text-primary);">${reasonLabel} reported</div>
+        <div class="caption">${formatDate(report.createdAt, { month: 'short', day: 'numeric' })}</div>
+      </div>
+      <div class="body-text">${report.reason}</div>
+      ${report.note ? `<div class="caption">"${report.note}"</div>` : ''}
+      <div class="caption">Reported by ${directoryName(report.reporterId)} · About ${directoryName(report.targetOwnerId)}</div>
+      <button class="btn btn-secondary" data-resolve-report="${report.id}">Mark Resolved</button>
+    </div>`;
+}
+
 export function renderTeam(container, { onNewWorkout, onOpenAthlete }) {
   function draw() {
     const roster = rosterMembers();
     const workouts = workoutsForCurrentUser().sort((a, b) => new Date(b.date) - new Date(a.date));
     const myOrgs = adminOrganizations();
     const activeOrgId = getState().currentOrganization?.id;
+    const reports = reportsVisibleToModerator();
 
     const node = h(`
       <div class="screen stack gap-lg">
@@ -49,6 +69,13 @@ export function renderTeam(container, { onNewWorkout, onOpenAthlete }) {
           <h1 class="h-hero">Team</h1>
           <button class="pill-action-btn primary" id="btn-new-workout">${ICONS.plus} New Workout</button>
         </div>
+
+        ${reports.length ? `
+          <div class="stack gap-sm">
+            <div class="h-headline row gap-xs">${ICONS.shield} Reports Needing Review</div>
+            ${reports.map(reportRow).join('')}
+          </div>
+        ` : ''}
 
         ${myOrgs.length > 1 ? `
           <div class="stack gap-sm">
@@ -74,6 +101,14 @@ export function renderTeam(container, { onNewWorkout, onOpenAthlete }) {
     `);
 
     node.querySelector('#btn-new-workout').addEventListener('click', onNewWorkout);
+
+    node.querySelectorAll('[data-resolve-report]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        resolveReport(btn.dataset.resolveReport);
+        showToast('Report marked resolved');
+        draw();
+      });
+    });
 
     node.querySelectorAll('[data-switch-org]').forEach((btn) => {
       btn.addEventListener('click', () => {

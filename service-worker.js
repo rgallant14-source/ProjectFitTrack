@@ -1,4 +1,4 @@
-const CACHE_NAME = 'fittrack-v10';
+const CACHE_NAME = 'fittrack-v11';
 const APP_SHELL = [
   './',
   './index.html',

@@ -1,10 +1,12 @@
-import { h, mount, showToast, avatarColorClass, emptyState } from '../components/dom.js';
+import { h, mount, showToast, avatarColorClass, emptyState, escapeHtml } from '../components/dom.js';
 import {
-  getState, isAdmin, rosterMembers, clipFeedEntries, setClipsFilterAthlete,
+  getState, isAdmin, isParent, rosterMembers, clipFeedEntries, setClipsFilterAthlete,
   clipCommentsForClip, addClipComment, addClip, toggleClipLike, toggleClipReaction,
+  linkedAthleteForCurrentParent,
 } from '../store.js';
 import { detectClipPlatform, youtubeVideoId, uuid, makeClip } from '../models.js';
 import { PLATFORM_LABEL, ICONS } from '../components/icons.js';
+import { openActionMenu, openReportSheet } from '../components/moderation.js';
 
 const QUICK_EMOJIS = ['👍', '🔥', '👏', '💪', '😮'];
 
@@ -40,14 +42,17 @@ function clipPost(entry, { showAthleteName }) {
 
   return `
     <div class="card stack gap-md" data-clip-post="${clip.id}" data-athlete-id="${athleteId}">
-      ${showAthleteName ? `
-        <div class="row gap-sm">
-          <div class="avatar ${avatarColorClass(athleteId)}" style="width:32px; height:32px; font-size:12px;">${initials}</div>
-          <div class="stack gap-xs">
-            <div class="caption" style="color:var(--text-primary); font-weight:700;">${athleteName}</div>
-            <div class="caption">${timeAgo(clip.addedAt)}</div>
-          </div>
-        </div>` : `<div class="caption">${timeAgo(clip.addedAt)}</div>`}
+      <div class="row-between">
+        ${showAthleteName ? `
+          <div class="row gap-sm">
+            <div class="avatar ${avatarColorClass(athleteId)}" style="width:32px; height:32px; font-size:12px;">${initials}</div>
+            <div class="stack gap-xs">
+              <div class="caption" style="color:var(--text-primary); font-weight:700;">${athleteName}</div>
+              <div class="caption">${timeAgo(clip.addedAt)}</div>
+            </div>
+          </div>` : `<div class="caption">${timeAgo(clip.addedAt)}</div>`}
+        <button class="icon-btn icon-btn-sm" data-report-clip="${clip.id}" data-report-owner="${athleteId}" title="Report this clip">${ICONS.flag}</button>
+      </div>
 
       <div class="clip-thumb" style="border-radius:var(--radius-control);">
         <span class="clip-platform-badge">${PLATFORM_LABEL[clip.platform] || 'Clip'}</span>
@@ -71,10 +76,11 @@ function clipPost(entry, { showAthleteName }) {
         ${comments.map((c) => `
           <div class="row gap-sm" style="align-items:flex-start;">
             <div class="avatar ${avatarColorClass(c.authorId)}" style="width:26px;height:26px;font-size:10px;flex-shrink:0;">${c.authorName.split(' ').map((s) => s[0]).join('').toUpperCase()}</div>
-            <div class="stack gap-xs">
+            <div class="stack gap-xs" style="flex:1;">
               <div class="caption"><span style="color:var(--text-primary); font-weight:700;">${c.authorName}</span> ${c.authorRole === 'admin' ? '· Coach' : ''} · ${timeAgo(c.createdAt)}</div>
-              <div class="body-text">${c.text}</div>
+              <div class="body-text">${escapeHtml(c.text)}</div>
             </div>
+            <button class="icon-btn icon-btn-sm" data-report-comment="${c.id}" data-report-owner="${c.authorId}" title="Report this comment">${ICONS.flag}</button>
           </div>
         `).join('')}
         <div class="row gap-sm">
@@ -87,18 +93,22 @@ function clipPost(entry, { showAthleteName }) {
 
 export function renderClips(container) {
   const admin = isAdmin();
+  const parent = isParent();
 
   function draw() {
     const entries = clipFeedEntries();
     const roster = rosterMembers();
     const filterId = getState().clipsFilterAthleteId;
+    const linkedAthlete = parent ? linkedAthleteForCurrentParent() : null;
 
     const node = h(`
       <div class="screen stack gap-lg">
         <div class="row-between">
           <h1 class="h-hero">Clips</h1>
-          ${!admin ? `<button class="pill-action-btn primary" id="btn-add-clip">${ICONS.plus} Add</button>` : ''}
+          ${!admin && !parent ? `<button class="pill-action-btn primary" id="btn-add-clip">${ICONS.plus} Add</button>` : ''}
         </div>
+
+        ${parent ? `<div class="caption">Read-only ${linkedAthlete ? `\u2014 viewing ${linkedAthlete.fullName}\u2019s clips` : ''}. You can still like, react, comment, and report.</div>` : ''}
 
         ${admin ? `
           <div class="row-wrap gap-sm" id="athlete-filter">
@@ -113,8 +123,8 @@ export function renderClips(container) {
           ? entries.map((entry) => clipPost(entry, { showAthleteName: admin })).join('')
           : `<div class="card">${emptyState({
               icon: ICONS.film,
-              title: admin ? 'No clips yet' : 'No clips yet',
-              subtitle: admin ? 'Nothing posted by your athletes yet.' : 'Add a YouTube skill video, or a Veo/Trace game clip, to get feedback from your coach.',
+              title: parent && !linkedAthlete ? 'No athlete linked yet' : 'No clips yet',
+              subtitle: parent && !linkedAthlete ? 'Link your athlete from your Profile tab to see their clips here.' : (admin ? 'Nothing posted by your athletes yet.' : 'Add a YouTube skill video, or a Veo/Trace game clip, to get feedback from your coach.'),
             })}</div>`}
       </div>
     `);
@@ -142,10 +152,32 @@ export function renderClips(container) {
       });
     });
 
+    node.querySelectorAll('[data-report-clip]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        openReportSheet({
+          targetType: 'clip',
+          targetOwnerId: btn.dataset.reportOwner,
+          targetId: btn.dataset.reportClip,
+          contentSnapshot: entries.find((e) => e.clip.id === btn.dataset.reportClip)?.clip.title ?? '',
+        });
+      });
+    });
+
+    node.querySelectorAll('[data-report-comment]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        openReportSheet({
+          targetType: 'comment',
+          targetOwnerId: btn.dataset.reportOwner,
+          targetId: btn.dataset.reportComment,
+        });
+      });
+    });
+
     node.querySelectorAll('[data-clip-post]').forEach((postEl) => {
       const clipId = postEl.dataset.clipPost;
       const input = postEl.querySelector('[data-comment-input]');
       const submit = postEl.querySelector('[data-comment-submit]');
+      if (!input || !submit) return;
       const submitComment = () => {
         if (!input.value.trim()) return;
         addClipComment(clipId, input.value);
@@ -180,17 +212,35 @@ function openAddClipSheet(onDone) {
           <label for="clip-title">Title (optional)</label>
           <input id="clip-title" type="text" placeholder="e.g. Game-winning goal vs. Central" />
         </div>
+        <div class="field">
+          <label>Visibility</label>
+          <div class="segmented" id="visibility-picker">
+            <button data-visibility="team" class="active">Team only</button>
+            <button data-visibility="shareable">Make shareable</button>
+          </div>
+          <div class="caption" id="visibility-hint">Only your coach(es) and teammates can see this — the default for everything you post.</div>
+        </div>
         <button class="btn btn-primary" id="btn-save">Add Clip</button>
       </div>
     </div>
   `);
+  let visibility = 'team';
   backdrop.addEventListener('click', (e) => { if (e.target.id === 'backdrop') backdrop.remove(); });
   backdrop.querySelector('#btn-close').addEventListener('click', () => backdrop.remove());
+  backdrop.querySelector('#visibility-picker').addEventListener('click', (e) => {
+    const btn = e.target.closest('button[data-visibility]');
+    if (!btn) return;
+    visibility = btn.dataset.visibility;
+    [...backdrop.querySelectorAll('#visibility-picker button')].forEach((b) => b.classList.toggle('active', b === btn));
+    backdrop.querySelector('#visibility-hint').textContent = visibility === 'shareable'
+      ? 'Eligible to be shared outside the team once share-to-social ships \u2014 nothing changes about who can see it today.'
+      : 'Only your coach(es) and teammates can see this — the default for everything you post.';
+  });
   backdrop.querySelector('#btn-save').addEventListener('click', () => {
     const url = backdrop.querySelector('#clip-url').value.trim();
     const title = backdrop.querySelector('#clip-title').value.trim();
     if (!url) return;
-    addClip(user.id, makeClip({ id: uuid(), url, platform: detectClipPlatform(url), title }));
+    addClip(user.id, makeClip({ id: uuid(), url, platform: detectClipPlatform(url), title, visibility }));
     backdrop.remove();
     showToast('Clip added');
     onDone();

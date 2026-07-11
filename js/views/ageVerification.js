@@ -1,9 +1,14 @@
 import { h, mount } from '../components/dom.js';
-import { verifyAge, getState, clearError } from '../store.js';
+import { verifyAge, getState } from '../store.js';
 import { ICONS } from '../components/icons.js';
 
 export function renderAgeVerification(container, { onVerified, onBack }) {
-  clearError();
+  // Reflect whatever's currently in state.errorMessage directly, rather
+  // than clearing it here: verifyAge()'s own notify() causes this whole
+  // screen to remount before the click handler below gets a chance to
+  // update the old (by-then-detached) DOM node, so the template itself
+  // needs to be the source of truth for the error text.
+  const existingError = getState().errorMessage;
   const defaultDob = new Date();
   defaultDob.setFullYear(defaultDob.getFullYear() - 15);
   const dobStr = defaultDob.toISOString().slice(0, 10);
@@ -20,7 +25,7 @@ export function renderAgeVerification(container, { onVerified, onBack }) {
         <label for="dob">Date of birth</label>
         <input type="date" id="dob" value="${dobStr}" max="${maxDob}" />
       </div>
-      <div id="err" class="error-text"></div>
+      <div id="err" class="error-text">${existingError || ''}</div>
       <button class="btn btn-primary" id="btn-continue">Continue</button>
     </div>
   `);
@@ -30,9 +35,9 @@ export function renderAgeVerification(container, { onVerified, onBack }) {
     const dob = node.querySelector('#dob').value;
     if (!dob) return;
     const ok = verifyAge(dob);
-    const err = getState().errorMessage;
-    node.querySelector('#err').textContent = err || '';
     if (ok) onVerified();
+    // On failure, verifyAge()'s notify() triggers a fresh remount of this
+    // same screen (see above) which will show the error via the template.
   });
 
   mount(container, node);

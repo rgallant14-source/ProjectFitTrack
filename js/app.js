@@ -1,9 +1,10 @@
-import { subscribe, getState, navigate, isAdmin } from './store.js';
+import { subscribe, getState, navigate, isAdmin, isParent, signUp, clearError } from './store.js';
 import { renderOnboarding } from './views/onboarding.js';
 import { renderAgeVerification } from './views/ageVerification.js';
 import { renderSignUp } from './views/signup.js';
 import { renderLogin } from './views/login.js';
 import { renderDashboard } from './views/dashboard.js';
+import { renderParentHome } from './views/parentHome.js';
 import { renderCalendar } from './views/calendar.js';
 import { renderProfile } from './views/profile.js';
 import { renderWorkoutDetail } from './views/workoutDetail.js';
@@ -19,26 +20,37 @@ import { renderProgressHistory } from './views/progressHistory.js';
 const appEl = document.getElementById('app');
 const tabBar = document.getElementById('tab-bar');
 const teamTabBtn = document.getElementById('tab-team');
+const calendarTabBtn = tabBar.querySelector('[data-route="calendar"]');
 
 // `authScreen` tracks where we are in the unauthenticated flow (onboarding
-// -> age verification -> sign up, or -> log in). Once store.isAuthenticated
-// flips true, we stop consulting this and render the tab-based app instead.
+// -> sign up, or -> log in). Once store.isAuthenticated flips true, we
+// stop consulting this and render the tab-based app instead.
 let authScreen = 'onboarding';
+// Holds { fullName, email } between the signup details step and the age
+// verification step for an athlete signup — cleared once the account is
+// created (or if the person backs out).
+let pendingAthleteSignup = null;
 
 function renderAuthedApp() {
   const state = getState();
   document.body.dataset.authed = 'true';
 
-  // The Team tab only exists for admins — athletes never see it.
+  // The Team tab only exists for admins — athletes/parents never see it.
   teamTabBtn.style.display = isAdmin() ? 'flex' : 'none';
   if (!isAdmin() && state.route === 'team') navigate('dashboard');
+
+  // Parents get a read-only Family view instead of a real calendar — there's
+  // no meaningful "assigned to me" schedule for a parent account.
+  calendarTabBtn.style.display = isParent() ? 'none' : 'flex';
+  if (isParent() && state.route === 'calendar') navigate('dashboard');
 
   [...tabBar.querySelectorAll('.tab-btn')].forEach((btn) => {
     btn.classList.toggle('active', btn.dataset.route === state.route);
   });
 
   if (state.route === 'dashboard') {
-    renderDashboard(appEl, { onOpenWorkout: openWorkout });
+    if (isParent()) renderParentHome(appEl);
+    else renderDashboard(appEl, { onOpenWorkout: openWorkout });
   } else if (state.route === 'calendar') {
     renderCalendar(appEl, { onOpenWorkout: openWorkout });
   } else if (state.route === 'clips') {
@@ -91,16 +103,26 @@ function renderUnauthedApp() {
   document.body.dataset.authed = 'false';
   if (authScreen === 'onboarding') {
     renderOnboarding(appEl, {
-      onSignUp: () => { authScreen = 'ageVerify'; render(); },
+      onSignUp: () => { authScreen = 'signup'; render(); },
       onLogIn: () => { authScreen = 'login'; render(); },
+    });
+  } else if (authScreen === 'signup') {
+    renderSignUp(appEl, {
+      onDone: () => render(), // store flips isAuthenticated -> renderAuthedApp takes over
+      onNeedsAgeVerification: (details) => { clearError(); pendingAthleteSignup = details; authScreen = 'ageVerify'; render(); },
     });
   } else if (authScreen === 'ageVerify') {
     renderAgeVerification(appEl, {
-      onVerified: () => { authScreen = 'signup'; render(); },
-      onBack: () => { authScreen = 'onboarding'; render(); },
+      onVerified: async () => {
+        await signUp({ ...pendingAthleteSignup, role: 'athlete' });
+        pendingAthleteSignup = null;
+        // signUp()'s own notify() will flip isAuthenticated and re-render
+        // via the store subscription, but render() here is a harmless,
+        // immediate no-op safeguard in case that race is ever changed.
+        render();
+      },
+      onBack: () => { authScreen = 'signup'; render(); },
     });
-  } else if (authScreen === 'signup') {
-    renderSignUp(appEl, { onDone: () => render() }); // store flips isAuthenticated -> renderAuthedApp takes over
   } else if (authScreen === 'login') {
     renderLogin(appEl, {
       onDone: () => render(),

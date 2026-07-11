@@ -21,6 +21,7 @@ export function renderLogin(container, { onDone, onBack }) {
           <div class="segmented" id="role-picker">
             <button data-role="athlete" class="active">Athlete</button>
             <button data-role="admin">Admin</button>
+            <button data-role="parent">Parent</button>
           </div>
         </div>
       </div>
