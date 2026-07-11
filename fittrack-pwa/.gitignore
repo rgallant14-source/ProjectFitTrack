@@ -1,0 +1,14 @@
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
+*.swp
+
+# Local env / logs (not currently used, but harmless to ignore if added later)
+.env
+.env.local
+npm-debug.log*
+node_modules/
