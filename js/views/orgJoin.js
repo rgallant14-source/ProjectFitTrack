@@ -23,7 +23,7 @@ export function renderOrgJoin(container, { onDone, onClose }) {
     </div>
   `);
 
-  node.querySelector('#backdrop').addEventListener('click', (e) => { if (e.target.id === 'backdrop') onClose(); });
+  node.addEventListener('click', (e) => { if (e.target.id === 'backdrop') onClose(); });
   node.querySelector('#btn-close').addEventListener('click', onClose);
 
   const joinBtn = node.querySelector('#btn-join');

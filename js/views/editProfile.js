@@ -101,7 +101,7 @@ export function renderEditProfile(container, { onDone, onClose, initialTab = 'pr
       </div>
     `);
 
-    node.querySelector('#backdrop').addEventListener('click', (e) => { if (e.target.id === 'backdrop') onClose(); });
+    node.addEventListener('click', (e) => { if (e.target.id === 'backdrop') onClose(); });
     node.querySelector('#btn-close').addEventListener('click', onClose);
 
     node.querySelector('#btn-upload-photo').addEventListener('click', () => {

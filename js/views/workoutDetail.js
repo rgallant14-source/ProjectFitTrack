@@ -163,7 +163,7 @@ function openLogSheet(exercise, workout, onSaved) {
     backdrop.querySelector('#rpe-label').textContent = `RPE: ${e.target.value}`;
   });
   backdrop.querySelector('#btn-cancel').addEventListener('click', () => backdrop.remove());
-  backdrop.querySelector('#backdrop').addEventListener('click', (e) => { if (e.target.id === 'backdrop') backdrop.remove(); });
+  backdrop.addEventListener('click', (e) => { if (e.target.id === 'backdrop') backdrop.remove(); });
 
   backdrop.querySelector('#btn-save').addEventListener('click', () => {
     const weightVal = showWeight ? backdrop.querySelector('#weight').value : '';

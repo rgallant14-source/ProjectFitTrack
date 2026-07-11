@@ -184,7 +184,7 @@ function openAddClipSheet(onDone) {
       </div>
     </div>
   `);
-  backdrop.querySelector('#backdrop').addEventListener('click', (e) => { if (e.target.id === 'backdrop') backdrop.remove(); });
+  backdrop.addEventListener('click', (e) => { if (e.target.id === 'backdrop') backdrop.remove(); });
   backdrop.querySelector('#btn-close').addEventListener('click', () => backdrop.remove());
   backdrop.querySelector('#btn-save').addEventListener('click', () => {
     const url = backdrop.querySelector('#clip-url').value.trim();
