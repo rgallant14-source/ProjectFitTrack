@@ -7,9 +7,10 @@ export function renderAthleteProgress(container, member, { onClose }) {
   const workouts = workoutsForCurrentUser();
   const clipCount = clipsForUser(member.id).length;
 
-  function exerciseName(exerciseId, workoutId) {
-    const workout = workouts.find((w) => w.id === workoutId);
-    return workout?.exercises.find((e) => e.id === exerciseId)?.name ?? 'Exercise';
+  function exerciseName(log) {
+    if (log.exerciseName) return log.exerciseName;
+    const workout = workouts.find((w) => w.id === log.workoutId);
+    return workout?.exercises.find((e) => e.id === log.exerciseId)?.name ?? 'Exercise';
   }
 
   const sorted = [...logs].sort((a, b) => new Date(b.completedAt) - new Date(a.completedAt));
@@ -37,7 +38,7 @@ export function renderAthleteProgress(container, member, { onClose }) {
       ${sorted.length ? sorted.map((log) => `
         <div class="card stack gap-xs">
           <div class="row-between">
-            <div class="body-text" style="font-weight:600;">${exerciseName(log.exerciseId, log.workoutId)}</div>
+            <div class="body-text" style="font-weight:600;">${exerciseName(log)}</div>
             <div class="caption">${new Date(log.completedAt).toLocaleDateString()}</div>
           </div>
           <div class="caption">

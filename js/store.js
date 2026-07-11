@@ -1,10 +1,10 @@
 import {
   seedWorkouts, seedRosterByOrg, seedRosterLogs, seedRosterClips, seedClipComments,
-  seedPractices, ORGANIZATIONS, ORG_ADMIN_DIRECTORY, sampleOrg,
+  seedPractices, seedDemoAthleteHistory, ORGANIZATIONS, ORG_ADMIN_DIRECTORY, sampleOrg,
 } from './mockData.js';
 import { makeUser, makeWorkout, makeClip, userAge, uuid, isWorkoutVisibleToUser } from './models.js';
 
-const STORAGE_KEY = 'fittrack_state_v5';
+const STORAGE_KEY = 'fittrack_state_v6';
 
 /**
  * This store is the web equivalent of the SwiftUI ViewModels: it holds
@@ -52,7 +52,7 @@ const state = {
 
   // Workouts / logs
   workouts: persisted?.workouts ?? seededWorkouts,
-  logs: persisted?.logs ?? seedRosterLogs(seededWorkouts),
+  logs: persisted?.logs ?? [...seedRosterLogs(seededWorkouts), ...seedDemoAthleteHistory()],
   notificationsEnabled: persisted?.notificationsEnabled ?? false,
 
   // Profile clips (skill/progress videos + game-camera highlights), keyed
@@ -253,6 +253,29 @@ export function findLog(exerciseId, workoutId, userId = state.currentUser?.id) {
 
 export function logsForUser(userId) {
   return state.logs.filter((l) => l.userId === userId);
+}
+
+// History of a specific movement, matched by name (not exerciseId) since a
+// repeated weekly workout generates a fresh exercise id each time it's
+// created — matching by name is what lets "did I lift more than last week"
+// actually work across separate workout instances.
+export function exerciseHistory(userId, exerciseName, { excludeLogId } = {}) {
+  return state.logs
+    .filter((l) => l.userId === userId && l.exerciseName === exerciseName && l.id !== excludeLogId)
+    .sort((a, b) => new Date(b.completedAt) - new Date(a.completedAt));
+}
+
+// Every distinct movement this user has ever logged, most-recently-logged
+// first — powers the Progress History screen.
+export function loggedExerciseNames(userId) {
+  const seen = new Map(); // name -> most recent completedAt
+  state.logs.filter((l) => l.userId === userId).forEach((l) => {
+    const existing = seen.get(l.exerciseName);
+    if (!existing || new Date(l.completedAt) > new Date(existing)) seen.set(l.exerciseName, l.completedAt);
+  });
+  return [...seen.entries()]
+    .sort((a, b) => new Date(b[1]) - new Date(a[1]))
+    .map(([name]) => name);
 }
 
 // Consecutive days (ending today or yesterday) this user has logged at

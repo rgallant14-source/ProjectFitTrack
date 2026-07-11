@@ -14,6 +14,7 @@ import { renderAthleteProgress } from './views/athleteProgress.js';
 import { renderEditProfile } from './views/editProfile.js';
 import { renderClips } from './views/clips.js';
 import { renderMessages } from './views/messages.js';
+import { renderProgressHistory } from './views/progressHistory.js';
 
 const appEl = document.getElementById('app');
 const tabBar = document.getElementById('tab-bar');
@@ -47,7 +48,7 @@ function renderAuthedApp() {
   } else if (state.route === 'messages') {
     renderMessages(appEl);
   } else if (state.route === 'profile') {
-    renderProfile(appEl, { onJoinOrg: openOrgJoin, onEditProfile: openEditProfile });
+    renderProfile(appEl, { onJoinOrg: openOrgJoin, onEditProfile: openEditProfile, onViewHistory: openProgressHistory });
   }
 }
 
@@ -68,6 +69,10 @@ function openAthleteProgress(member) {
   renderAthleteProgress(appEl, member, {
     onClose: () => render(),
   });
+}
+
+function openProgressHistory() {
+  renderProgressHistory(appEl, { onClose: () => render() });
 }
 
 function openEditProfile(initialTab = 'profile') {

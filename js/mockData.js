@@ -132,6 +132,7 @@ export function seedRosterLogs(workouts) {
     monday.exercises.slice(0, 4).forEach((ex, i) => {
       logs.push({
         id: uuid(), exerciseId: ex.id, workoutId: monday.id, userId: 'athlete-1',
+        exerciseName: ex.name, block: ex.block,
         weightUsed: ex.block === 'Strength' ? 45 + i * 5 : null, rpe: 6 + (i % 3),
         timeOrRecord: null, notes: '', isShared: true, completedAt: dateOffset(-2),
       });
@@ -139,6 +140,7 @@ export function seedRosterLogs(workouts) {
     monday.exercises.slice(0, 2).forEach((ex, i) => {
       logs.push({
         id: uuid(), exerciseId: ex.id, workoutId: monday.id, userId: 'athlete-2',
+        exerciseName: ex.name, block: ex.block,
         weightUsed: ex.block === 'Strength' ? 35 + i * 5 : null, rpe: 7,
         timeOrRecord: null, notes: 'Felt strong today', isShared: true, completedAt: dateOffset(-2),
       });
@@ -148,12 +150,49 @@ export function seedRosterLogs(workouts) {
     tuesday.exercises.forEach((ex, i) => {
       logs.push({
         id: uuid(), exerciseId: ex.id, workoutId: tuesday.id, userId: 'athlete-3',
+        exerciseName: ex.name, block: ex.block,
         weightUsed: null, rpe: 5 + (i % 4), timeOrRecord: ex.name.includes('shuttle') ? '4.8s' : null,
         notes: '', isShared: true, completedAt: dateOffset(-1),
       });
     });
   }
   return logs;
+}
+
+// Multi-week dummy history for the demo athlete login (Jordan Casey), so
+// opening a Strength or Agility exercise's log sheet shows a real trend —
+// e.g. Goblet Squat weight climbing week over week — without requiring the
+// person testing the app to manually log four weeks of data first.
+// Matched by exercise NAME (not a specific workout's exerciseId), which is
+// how the app looks up history in general, since a repeated weekly workout
+// generates a fresh exercise id each time it's created.
+export function seedDemoAthleteHistory() {
+  const userId = 'demo-athlete-1';
+  const entries = [
+    { name: 'Goblet Squat', block: 'Strength', weeksAgo: 3, weight: 30, rpe: 6 },
+    { name: 'Goblet Squat', block: 'Strength', weeksAgo: 2, weight: 35, rpe: 6 },
+    { name: 'Goblet Squat', block: 'Strength', weeksAgo: 1, weight: 40, rpe: 7 },
+    { name: 'Romanian Deadlift', block: 'Strength', weeksAgo: 3, weight: 40, rpe: 6 },
+    { name: 'Romanian Deadlift', block: 'Strength', weeksAgo: 2, weight: 45, rpe: 7 },
+    { name: 'Romanian Deadlift', block: 'Strength', weeksAgo: 1, weight: 45, rpe: 6 },
+    { name: '5-10-5 shuttle', block: 'Agility', weeksAgo: 3, record: '5.1s', rpe: 7 },
+    { name: '5-10-5 shuttle', block: 'Agility', weeksAgo: 2, record: '4.9s', rpe: 7 },
+    { name: '5-10-5 shuttle', block: 'Agility', weeksAgo: 1, record: '4.8s', rpe: 8 },
+  ];
+  return entries.map((e) => ({
+    id: uuid(),
+    exerciseId: `history-${e.name}-${e.weeksAgo}`,
+    workoutId: `history-workout-${e.weeksAgo}`,
+    userId,
+    exerciseName: e.name,
+    block: e.block,
+    weightUsed: e.weight ?? null,
+    rpe: e.rpe,
+    timeOrRecord: e.record ?? null,
+    notes: '',
+    isShared: false,
+    completedAt: dateOffset(-7 * e.weeksAgo),
+  }));
 }
 
 // ---------- Simulated 3rd-party practice schedule (PlayMetrics-style) ----------

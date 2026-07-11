@@ -10,7 +10,7 @@ function socialIcon(platform, url) {
   return `<a class="social-icon ${has ? '' : 'empty'}" href="${has ? href : '#'}" target="${has ? '_blank' : ''}" rel="noopener" data-empty="${!has}" data-platform="${platform}">${ICONS[platform]}</a>`;
 }
 
-export function renderProfile(container, { onJoinOrg, onEditProfile }) {
+export function renderProfile(container, { onJoinOrg, onEditProfile, onViewHistory }) {
   const state = getState();
   const user = state.currentUser;
   const admin = isAdmin();
@@ -66,6 +66,15 @@ export function renderProfile(container, { onJoinOrg, onEditProfile }) {
           </button>
         </div>
 
+        <button class="card card-tappable row gap-md" id="btn-view-history">
+          <span class="card-icon" style="color:var(--hue-blue-1);">${ICONS.trendingUp}</span>
+          <div class="stack gap-xs" style="flex:1;">
+            <div class="h-headline">Progress History</div>
+            <div class="caption">See how each movement has changed over time</div>
+          </div>
+          <svg class="chevron" width="18" height="18" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        </button>
+
         <div class="stack gap-sm">
           <div class="h-headline">Socials</div>
           <div class="social-icon-row">
@@ -102,6 +111,7 @@ export function renderProfile(container, { onJoinOrg, onEditProfile }) {
 
   node.querySelector('#btn-edit').addEventListener('click', onEditProfile);
   node.querySelector('#btn-view-clips')?.addEventListener('click', () => navigate('clips'));
+  node.querySelector('#btn-view-history')?.addEventListener('click', onViewHistory);
   node.querySelector('#btn-join-org')?.addEventListener('click', onJoinOrg);
 
   node.querySelector('#notif-toggle').addEventListener('change', async (e) => {

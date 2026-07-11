@@ -91,9 +91,22 @@ export function isSameDay(a, b) {
   return da.getFullYear() === db.getFullYear() && da.getMonth() === db.getMonth() && da.getDate() === db.getDate();
 }
 
-export function makeExerciseLog({ id, exerciseId, workoutId, userId, weightUsed = null, rpe = null, timeOrRecord = null, notes = '', isShared = false, completedAt = new Date().toISOString() }) {
-  return { id, exerciseId, workoutId, userId, weightUsed, rpe, timeOrRecord, notes, isShared, completedAt };
+export function makeExerciseLog({ id, exerciseId, workoutId, userId, exerciseName = '', block = '', weightUsed = null, rpe = null, timeOrRecord = null, notes = '', isShared = false, completedAt = new Date().toISOString() }) {
+  return { id, exerciseId, workoutId, userId, exerciseName, block, weightUsed, rpe, timeOrRecord, notes, isShared, completedAt };
 }
+
+// Which data fields make sense to collect for a given exercise category —
+// mirrors the original tracker spreadsheet: Strength gets weight + RPE,
+// Agility/Ball Skills/Technical get a time or record instead of weight.
+// Warm-up/Recovery collect no performance metric, just optional notes.
+export const BLOCK_LOG_FIELDS = {
+  'Warm-up': [],
+  'Strength': ['weight', 'rpe'],
+  'Agility': ['record', 'rpe'],
+  'Ball Skills': ['record', 'rpe'],
+  'Technical': ['record', 'rpe'],
+  'Recovery': [],
+};
 
 export const BLOCKS = ['Warm-up', 'Strength', 'Agility', 'Ball Skills', 'Technical', 'Recovery'];
 
