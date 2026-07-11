@@ -2,9 +2,9 @@
 // Workout, Exercise, ExerciseLog). No classes needed — these are just typed
 // shapes; the "type safety" lives in how consistently we call these factories.
 
-export function makeUser({ id, fullName, email, dateOfBirth, role, organizationId = null, socialLinks = {}, bio = '' }) {
+export function makeUser({ id, fullName, email, phone = '', dateOfBirth, role, organizationId = null, socialLinks = {}, bio = '' }) {
   return {
-    id, fullName, email, dateOfBirth, role, organizationId, bio,
+    id, fullName, email, phone, dateOfBirth, role, organizationId, bio,
     // Social handles/links shown on the profile. youtube is specifically
     // called out since athletes commonly post skill/progress videos there.
     socialLinks: {

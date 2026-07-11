@@ -2,6 +2,8 @@ import { subscribe, getState, navigate, isAdmin, isParent, signUp, clearError } 
 import { renderOnboarding } from './views/onboarding.js';
 import { renderAgeVerification } from './views/ageVerification.js';
 import { renderSignUp } from './views/signup.js';
+import { renderVerifyCode } from './views/verifyCode.js';
+import { renderAthletePicker } from './views/athletePicker.js';
 import { renderLogin } from './views/login.js';
 import { renderDashboard } from './views/dashboard.js';
 import { renderParentHome } from './views/parentHome.js';
@@ -22,14 +24,15 @@ const tabBar = document.getElementById('tab-bar');
 const teamTabBtn = document.getElementById('tab-team');
 const calendarTabBtn = tabBar.querySelector('[data-route="calendar"]');
 
-// `authScreen` tracks where we are in the unauthenticated flow (onboarding
-// -> sign up, or -> log in). Once store.isAuthenticated flips true, we
-// stop consulting this and render the tab-based app instead.
+// `authScreen` tracks where we are in the unauthenticated flow:
+// onboarding -> signup (details + team code) -> ageVerify (athletes only)
+// -> verifyCode (everyone) -> account created. Once store.isAuthenticated
+// flips true, we stop consulting this and render the tab-based app.
 let authScreen = 'onboarding';
-// Holds { fullName, email } between the signup details step and the age
-// verification step for an athlete signup — cleared once the account is
-// created (or if the person backs out).
-let pendingAthleteSignup = null;
+// Holds { fullName, email, phone, role, organizationId } between the
+// signup details step and the screens that follow it — cleared once the
+// account is actually created (or if the person backs all the way out).
+let pendingSignup = null;
 
 function renderAuthedApp() {
   const state = getState();
@@ -99,6 +102,16 @@ function openOrgJoin() {
   renderOrgJoin(wrapper, { onDone: cleanup, onClose: cleanup });
 }
 
+// Shown once, right after a brand-new parent account is created — the
+// team was already validated by join code at signup, so this just needs
+// picking which athlete on that roster is theirs, with no way to dismiss
+// it into a half-set-up account (no onClose — closing lands them on their
+// empty Family tab, where "+ Link Your Athlete" reopens this same step).
+function openAthletePickerAfterSignup() {
+  const wrapper = document.body.appendChild(document.createElement('div'));
+  renderAthletePicker(wrapper, { onDone: () => { wrapper.remove(); render(); } });
+}
+
 function renderUnauthedApp() {
   document.body.dataset.authed = 'false';
   if (authScreen === 'onboarding') {
@@ -108,20 +121,35 @@ function renderUnauthedApp() {
     });
   } else if (authScreen === 'signup') {
     renderSignUp(appEl, {
-      onDone: () => render(), // store flips isAuthenticated -> renderAuthedApp takes over
-      onNeedsAgeVerification: (details) => { clearError(); pendingAthleteSignup = details; authScreen = 'ageVerify'; render(); },
+      onDetailsReady: (details) => {
+        clearError();
+        pendingSignup = details;
+        authScreen = details.role === 'athlete' ? 'ageVerify' : 'verifyCode';
+        render();
+      },
     });
   } else if (authScreen === 'ageVerify') {
     renderAgeVerification(appEl, {
-      onVerified: async () => {
-        await signUp({ ...pendingAthleteSignup, role: 'athlete' });
-        pendingAthleteSignup = null;
-        // signUp()'s own notify() will flip isAuthenticated and re-render
-        // via the store subscription, but render() here is a harmless,
-        // immediate no-op safeguard in case that race is ever changed.
+      onVerified: () => { authScreen = 'verifyCode'; render(); },
+      onBack: () => { authScreen = 'signup'; render(); },
+    });
+  } else if (authScreen === 'verifyCode') {
+    renderVerifyCode(appEl, {
+      ...pendingSignup,
+      onVerified: async (result) => {
+        await signUp(result);
+        const wasParent = result.role === 'parent';
+        pendingSignup = null;
+        authScreen = 'onboarding';
+        // signUp()'s own notify() flips isAuthenticated and re-renders via
+        // the store subscription into the authed app; for a brand-new
+        // parent we then layer the athlete-picker sheet on top of that.
+        if (wasParent) openAthletePickerAfterSignup();
+      },
+      onBack: () => {
+        authScreen = pendingSignup?.role === 'athlete' ? 'ageVerify' : 'signup';
         render();
       },
-      onBack: () => { authScreen = 'signup'; render(); },
     });
   } else if (authScreen === 'login') {
     renderLogin(appEl, {

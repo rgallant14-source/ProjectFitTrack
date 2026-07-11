@@ -7,7 +7,7 @@ import {
   makeFamilyLink, makeReport,
 } from './models.js';
 
-const STORAGE_KEY = 'fittrack_state_v7';
+const STORAGE_KEY = 'fittrack_state_v8';
 
 /**
  * This store is the web equivalent of the SwiftUI ViewModels: it holds
@@ -49,6 +49,9 @@ const state = {
   errorMessage: null,
   isLoading: false,
   verifiedDateOfBirth: null,
+  // Signup-in-progress verification code — deliberately NOT read from or
+  // written to persisted storage (see the Signup verification section).
+  pendingVerification: null,
 
   // All known organizations (directory) and their per-org rosters. An
   // admin can manage more than one of these — see currentUser.adminOrgIds.
@@ -141,9 +144,62 @@ export function verifyAge(dateOfBirthStr) {
   return true;
 }
 
-export async function signUp({ fullName, email, role }) {
-  // Parents aren't verifying their OWN age against the 13+ athlete gate —
-  // that check only applies when the account being created is an athlete.
+// ---------- Signup verification (simulated 2-step activation) ----------
+// There's no real email/SMS provider wired up in this build, so "sending"
+// a code just generates it and hands it back to the UI to display with a
+// clear "this would normally arrive by email/text" note (same honesty
+// convention as the "PlayMetrics (simulated)" label elsewhere) — the
+// account itself isn't created until the code is confirmed. Kept off the
+// persisted snapshot on purpose: refreshing mid-verification just means
+// starting signup over, which is an acceptable, safe default.
+function generateVerificationCode() {
+  return String(Math.floor(100000 + Math.random() * 900000));
+}
+
+export function requestSignupVerification({ fullName, email, phone, role, organizationId, channel }) {
+  const code = generateVerificationCode();
+  state.pendingVerification = {
+    code, fullName, email, phone, role, organizationId, channel, attempts: 0, createdAt: Date.now(),
+  };
+  // Deliberately no notify() here: this is signup-in-progress, local-view
+  // state that the verifyCode screen already tracks and displays itself.
+  // Calling notify() would trigger app.js's global render subscription and
+  // re-invoke this same screen, which would call this function again —
+  // the identical infinite-recursion shape the clearError() bug had.
+  return code;
+}
+
+export function resendSignupVerification() {
+  if (!state.pendingVerification) return null;
+  const code = generateVerificationCode();
+  state.pendingVerification = { ...state.pendingVerification, code, attempts: 0, createdAt: Date.now() };
+  return code;
+}
+
+export function pendingVerification() {
+  return state.pendingVerification;
+}
+
+const MAX_VERIFICATION_ATTEMPTS = 5;
+
+export function confirmSignupVerification(inputCode) {
+  const pending = state.pendingVerification;
+  if (!pending) return { ok: false, error: 'Nothing to verify — please start signup again.' };
+  if (inputCode.trim() === pending.code) {
+    state.pendingVerification = null;
+    return { ok: true, fullName: pending.fullName, email: pending.email, phone: pending.phone, role: pending.role, organizationId: pending.organizationId };
+  }
+  pending.attempts = (pending.attempts ?? 0) + 1;
+  if (pending.attempts >= MAX_VERIFICATION_ATTEMPTS) {
+    state.pendingVerification = null;
+    return { ok: false, error: 'Too many incorrect attempts. Please start signup again.', exhausted: true };
+  }
+  return { ok: false, error: `That code doesn't match (${MAX_VERIFICATION_ATTEMPTS - pending.attempts} attempts left).` };
+}
+
+export async function signUp({ fullName, email, phone = '', role, organizationId = null }) {
+  // Only athletes go through the 13+ age gate — it's about the teen-athlete
+  // signup specifically, not a general account age check.
   if (role === 'athlete' && !state.verifiedDateOfBirth) {
     state.errorMessage = 'Please verify your date of birth first.';
     notify();
@@ -153,8 +209,22 @@ export async function signUp({ fullName, email, role }) {
   notify();
   await delay(400);
   const dob = role === 'athlete' ? state.verifiedDateOfBirth : new Date(new Date().setFullYear(new Date().getFullYear() - 35)).toISOString();
-  const user = makeUser({ id: uuid(), fullName, email, dateOfBirth: dob, role });
+  const user = makeUser({ id: uuid(), fullName, email, phone, dateOfBirth: dob, role });
   user.adminOrgIds = role === 'admin' ? [] : undefined;
+
+  // A team code was already validated before verification even started
+  // (see requestSignupVerification) — apply it now that the account is
+  // actually being created. Athletes become a roster member of that org;
+  // a parent just gets it as browsing context for the athlete-picker step
+  // that follows signup, same as the existing Profile > Join flow.
+  if (organizationId) {
+    const org = state.organizations.find((o) => o.id === organizationId);
+    if (org) {
+      state.currentOrganization = org;
+      if (role === 'athlete') user.organizationId = org.id;
+    }
+  }
+
   state.currentUser = user;
   state.isAuthenticated = true;
   state.isLoading = false;
@@ -214,6 +284,13 @@ export async function logIn({ email, role = 'athlete' }) {
   }
 
   notify();
+}
+
+// Pure lookup — no side effects — so signup can validate a team code
+// belongs to a real org BEFORE an account (or a verification code) is
+// created for it.
+export function findOrganizationByJoinCode(code) {
+  return state.organizations.find((o) => o.joinCode.toUpperCase() === (code ?? '').trim().toUpperCase()) ?? null;
 }
 
 export async function joinOrganization(code) {
