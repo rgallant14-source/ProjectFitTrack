@@ -10,7 +10,7 @@
      "brighter, social-app" palette swap. Electric blue -> violet -> pink. */
   --accent: #6a5cff;
   --accent-2: #8b7bff;
-  --gradient-primary: linear-gradient(135deg, #4f8cff 0%, #8b5cf6 55%, #ff5ea8 100%);
+  --gradient-primary: linear-gradient(135deg, var(--hue-blue-1) 0%, var(--hue-pink-2) 55%, var(--hue-pink-1) 100%);
   --gradient-primary-soft: linear-gradient(135deg, rgba(79,140,255,0.18) 0%, rgba(139,92,246,0.18) 55%, rgba(255,94,168,0.18) 100%);
 
   --text-primary: #ffffff;
@@ -35,21 +35,41 @@
   --tab-bar-height: 64px;
   --safe-bottom: env(safe-area-inset-bottom, 0px);
 
-  /* Category colors — used to color-tag exercise blocks and give the app
-     visual variety instead of everything being one accent color. */
-  --cat-warmup: #6b7280;
-  --cat-strength: #ff6b6b;
-  --cat-agility: #2fe0a8;
-  --cat-ball: #4f8cff;
-  --cat-technical: #ffb84d;
-  --cat-recovery: #8b7bff;
+  /* ---------- ONE unified 5-hue palette ----------
+     Every colored surface in the app (bento cards, category tags, streak
+     badge, accents) pulls from these five hues, each with a consistent
+     semantic meaning, instead of separate palettes per feature:
+       blue    = progress / primary metric
+       orange  = energy / streak
+       green   = success / completion
+       pink    = social / clips / community
+       purple  = team / roster / precision                                */
+  --hue-blue-1: #4f8cff; --hue-blue-2: #6a5cff;
+  --hue-orange-1: #ff9d4d; --hue-orange-2: #ff5e5e;
+  --hue-green-1: #2fe0a8; --hue-green-2: #1fb88a;
+  --hue-pink-1: #ff5ea8; --hue-pink-2: #8b5cf6;
+  --hue-purple-1: #a78bfa; --hue-purple-2: #6a5cff;
 
-  /* Bento-grid gradient variants for stat/content cards */
-  --grad-orange: linear-gradient(135deg, #ff9d4d 0%, #ff5e5e 100%);
-  --grad-pink: linear-gradient(135deg, #ff5ea8 0%, #ff8b5e 100%);
-  --grad-green: linear-gradient(135deg, #2fe0a8 0%, #4f8cff 100%);
-  --grad-blue: linear-gradient(135deg, #4f8cff 0%, #6a5cff 100%);
-  --grad-purple: linear-gradient(135deg, #8b5cf6 0%, #ff5ea8 100%);
+  --grad-blue: linear-gradient(135deg, var(--hue-blue-1) 0%, var(--hue-blue-2) 100%);
+  --grad-orange: linear-gradient(135deg, var(--hue-orange-1) 0%, var(--hue-orange-2) 100%);
+  --grad-green: linear-gradient(135deg, var(--hue-green-1) 0%, var(--hue-green-2) 100%);
+  --grad-pink: linear-gradient(135deg, var(--hue-pink-1) 0%, var(--hue-pink-2) 100%);
+  --grad-purple: linear-gradient(135deg, var(--hue-purple-1) 0%, var(--hue-purple-2) 100%);
+
+  /* Category tags now pull from the same five hues instead of a separate
+     6-color set, so exercise blocks visually relate to the rest of the UI. */
+  --cat-warmup: #6b7280;
+  --cat-strength: var(--hue-orange-2);
+  --cat-agility: var(--hue-green-1);
+  --cat-ball: var(--hue-blue-1);
+  --cat-technical: var(--hue-purple-1);
+  --cat-recovery: #4dd4c4;
+
+  /* ---------- Elevation ---------- */
+  --shadow-sm: 0 2px 10px -4px rgba(0,0,0,0.35);
+  --shadow-md: 0 10px 28px -10px rgba(0,0,0,0.5);
+  --shadow-lg: 0 20px 48px -14px rgba(0,0,0,0.6);
+  --radius-hero: 26px;
 }
 
 * { box-sizing: border-box; }
@@ -108,12 +128,14 @@ button { font-family: inherit; }
   border: 1px solid rgba(255,255,255,0.06);
   border-radius: var(--radius-card);
   padding: var(--space-md);
+  box-shadow: var(--shadow-sm);
 }
 .card-tappable { cursor: pointer; border: none; text-align: left; width: 100%; color: inherit; }
 .card-tappable:active { background: var(--surface-elevated); }
 .card-glow {
   background: var(--gradient-primary-soft);
   border: 1px solid rgba(139,92,246,0.25);
+  box-shadow: 0 12px 32px -16px rgba(139,92,246,0.4);
 }
 
 /* ---------- Buttons ---------- */
@@ -150,7 +172,7 @@ button { font-family: inherit; }
 .icon-btn-sm { width: 32px; height: 32px; }
 .icon-btn-sm svg { width: 15px; height: 15px; }
 .icon-btn.danger { color: var(--danger); }
-.icon-btn.primary { background: var(--gradient-primary); color: #fff; }
+.icon-btn.primary { background: var(--gradient-primary); color: #fff; box-shadow: var(--shadow-sm); }
 .icon-btn.ghost { background: transparent; }
 
 .screen-header {
@@ -249,11 +271,12 @@ body:not([data-authed="true"]) .toast { display: none; }
   display: flex; align-items: flex-end; justify-content: center;
 }
 .sheet {
-  background: var(--bg); width: 100%; max-width: 560px;
-  border-radius: 24px 24px 0 0; max-height: 88vh; overflow-y: auto;
+  background: var(--surface); width: 100%; max-width: 560px;
+  border-radius: 28px 28px 0 0; max-height: 88vh; overflow-y: auto;
   padding: var(--space-lg);
   animation: sheet-up 0.22s ease-out;
-  border-top: 1px solid rgba(255,255,255,0.08);
+  border-top: 1px solid rgba(255,255,255,0.12);
+  box-shadow: 0 -20px 60px -20px rgba(0,0,0,0.7);
 }
 @keyframes sheet-up { from { transform: translateY(100%); } to { transform: translateY(0); } }
 .sheet-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: var(--space-md); }
@@ -328,22 +351,27 @@ input[type="range"] { width: 100%; accent-color: var(--accent); }
 .center { text-align: center; }
 a { color: var(--accent-2); }
 
+.card-icon { width: 20px; height: 20px; display: inline-flex; flex-shrink: 0; }
+.card-icon svg { width: 100%; height: 100%; }
+
 /* ---------- Bento-style stat cards (dashboard/profile) ---------- */
 .bento-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .bento-card {
-  border-radius: var(--radius-card); padding: 16px; color: #fff;
+  border-radius: var(--radius-hero); padding: 16px; color: #fff;
   display: flex; flex-direction: column; justify-content: space-between;
   min-height: 100px; position: relative; overflow: hidden;
+  box-shadow: var(--shadow-md);
 }
 .bento-card .bento-value { font-size: 26px; font-weight: 800; letter-spacing: -0.02em; }
 .bento-card .bento-label { font-size: 12px; font-weight: 600; opacity: 0.9; margin-top: 2px; }
-.bento-card .bento-icon { font-size: 20px; opacity: 0.95; }
+.bento-card .bento-icon { width: 22px; height: 22px; opacity: 0.95; display: block; }
+.bento-card .bento-icon svg { width: 100%; height: 100%; }
 .bento-card.wide { grid-column: 1 / -1; }
-.bento-card.orange { background: var(--grad-orange); }
-.bento-card.pink { background: var(--grad-pink); }
-.bento-card.green { background: var(--grad-green); }
-.bento-card.blue { background: var(--grad-blue); }
-.bento-card.purple { background: var(--grad-purple); }
+.bento-card.orange { background: var(--grad-orange); box-shadow: var(--shadow-md), 0 12px 28px -12px rgba(255,94,94,0.5); }
+.bento-card.pink { background: var(--grad-pink); box-shadow: var(--shadow-md), 0 12px 28px -12px rgba(255,94,168,0.5); }
+.bento-card.green { background: var(--grad-green); box-shadow: var(--shadow-md), 0 12px 28px -12px rgba(47,224,168,0.4); }
+.bento-card.blue { background: var(--grad-blue); box-shadow: var(--shadow-md), 0 12px 28px -12px rgba(79,140,255,0.45); }
+.bento-card.purple { background: var(--grad-purple); box-shadow: var(--shadow-md), 0 12px 28px -12px rgba(167,139,250,0.45); }
 
 /* ---------- Category tags ---------- */
 .cat-tag {
@@ -361,18 +389,21 @@ a { color: var(--accent-2); }
 /* ---------- Streak badge ---------- */
 .streak-badge {
   display: inline-flex; align-items: center; gap: 6px;
-  background: linear-gradient(135deg, #ff9d4d, #ff5e5e);
+  background: var(--grad-orange);
   color: #fff; font-weight: 800; font-size: 14px;
   padding: 6px 14px; border-radius: var(--radius-pill);
+  box-shadow: 0 8px 20px -8px rgba(255,94,94,0.55);
 }
+.streak-badge svg { width: 15px; height: 15px; }
 
 /* ---------- Profile hero header ---------- */
 .profile-hero {
-  border-radius: var(--radius-card);
+  border-radius: var(--radius-hero);
   background: var(--gradient-primary);
   padding: 28px 20px 20px;
   display: flex; flex-direction: column; align-items: center; gap: 10px;
   position: relative; overflow: hidden;
+  box-shadow: var(--shadow-lg), 0 16px 40px -14px rgba(139,92,246,0.5);
 }
 .profile-hero::before {
   content: ''; position: absolute; inset: 0;

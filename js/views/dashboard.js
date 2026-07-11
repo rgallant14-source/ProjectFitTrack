@@ -1,4 +1,5 @@
 import { h, mount, categoryTag } from '../components/dom.js';
+import { ICONS } from '../components/icons.js';
 import { workoutsForCurrentUser, findLog, isAdmin, rosterMembers, overallCompletionForUser, currentStreakForUser, getState, logsForUser } from '../store.js';
 import { isSameDay } from '../models.js';
 import { equipmentForWorkout, quoteOfTheDay, highlightOfTheDay } from '../dailyContent.js';
@@ -23,7 +24,7 @@ function equipmentCard(workout) {
   return `
     <div class="card stack gap-sm">
       <div class="row gap-sm">
-        <span style="font-size:20px;">🎒</span>
+        <span class="card-icon" style="color:var(--hue-orange-1);">${ICONS.backpack}</span>
         <div class="h-headline">Equipment Needed Today</div>
       </div>
       ${items.length
@@ -37,7 +38,7 @@ function quoteCard() {
   return `
     <div class="card card-glow stack gap-sm">
       <div class="row gap-sm">
-        <span style="font-size:20px;">💬</span>
+        <span class="card-icon" style="color:var(--hue-pink-1);">${ICONS.quote}</span>
         <div class="h-headline">Quote of the Day</div>
       </div>
       <div class="body-text" style="font-style:italic;">"${q.text}"</div>
@@ -50,7 +51,7 @@ function highlightCard() {
   return `
     <div class="card stack gap-sm">
       <div class="row gap-sm">
-        <span style="font-size:20px;">🔥</span>
+        <span class="card-icon" style="color:var(--hue-orange-2);">${ICONS.fire}</span>
         <div class="h-headline">Today's Top Play</div>
       </div>
       <div class="clip-thumb" style="border-radius:var(--radius-control);">
@@ -78,15 +79,15 @@ export function renderDashboard(container, { onOpenWorkout }) {
     bento = `
       <div class="bento-grid">
         <div class="bento-card blue">
-          <span class="bento-icon">📊</span>
+          <span class="bento-icon">${ICONS.chart}</span>
           <div><div class="bento-value">${avgPct}%</div><div class="bento-label">Team Completion</div></div>
         </div>
         <div class="bento-card orange">
-          <span class="bento-icon">👥</span>
+          <span class="bento-icon">${ICONS.people}</span>
           <div><div class="bento-value">${roster.length}</div><div class="bento-label">Athletes</div></div>
         </div>
         <div class="bento-card wide purple">
-          <span class="bento-icon">📝</span>
+          <span class="bento-icon">${ICONS.clipboard}</span>
           <div><div class="bento-value">${totalLogged}</div><div class="bento-label">Results logged this week across your team</div></div>
         </div>
       </div>`;
@@ -101,15 +102,15 @@ export function renderDashboard(container, { onOpenWorkout }) {
     bento = `
       <div class="bento-grid">
         <div class="bento-card blue">
-          <span class="bento-icon">⚡</span>
+          <span class="bento-icon">${ICONS.bolt}</span>
           <div><div class="bento-value">${Math.round(fraction * 100)}%</div><div class="bento-label">Today's Progress</div></div>
         </div>
         <div class="bento-card orange">
-          <span class="bento-icon">🔥</span>
+          <span class="bento-icon">${ICONS.fire}</span>
           <div><div class="bento-value">${streak}</div><div class="bento-label">Day Streak</div></div>
         </div>
         <div class="bento-card wide green">
-          <span class="bento-icon">📈</span>
+          <span class="bento-icon">${ICONS.trendingUp}</span>
           <div><div class="bento-value">${totalLogged}</div><div class="bento-label">Total results logged — keep it up!</div></div>
         </div>
       </div>`;
@@ -118,8 +119,8 @@ export function renderDashboard(container, { onOpenWorkout }) {
   const node = h(`
     <div class="screen stack gap-lg">
       <div class="row-between">
-        <h1 class="h-hero">Hey, ${user.fullName.split(' ')[0]} 👋</h1>
-        ${!admin && currentStreakForUser(user.id) > 0 ? `<span class="streak-badge">🔥 ${currentStreakForUser(user.id)}</span>` : ''}
+        <h1 class="h-hero">Hey, ${user.fullName.split(' ')[0]}</h1>
+        ${!admin && currentStreakForUser(user.id) > 0 ? `<span class="streak-badge">${ICONS.fire} ${currentStreakForUser(user.id)}</span>` : ''}
       </div>
 
       ${bento}

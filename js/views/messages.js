@@ -50,7 +50,7 @@ export function renderMessages(container) {
             <div class="avatar ${avatarColorClass(entry.otherId)}" style="width:44px;height:44px;font-size:15px;flex-shrink:0;">${initialsOf(entry.otherName)}</div>
             <div class="stack gap-xs" style="flex:1; min-width:0;">
               <div class="body-text" style="font-weight:600;">${entry.otherName}</div>
-              <div class="caption" style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${entry.lastMessage ? entry.lastMessage.text : 'Say hello 👋'}</div>
+              <div class="caption" style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${entry.lastMessage ? entry.lastMessage.text : 'Say hello!'}</div>
             </div>
             ${entry.lastMessage ? `<div class="caption" style="flex-shrink:0;">${timeAgo(entry.lastMessage.createdAt)}</div>` : ''}
           </button>

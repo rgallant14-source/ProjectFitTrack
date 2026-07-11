@@ -47,21 +47,21 @@ export function renderProfile(container, { onJoinOrg, onEditProfile }) {
           <div class="caption" style="color:rgba(255,255,255,0.85);">${admin ? 'Coach / Club Admin' : 'Athlete'}${state.currentOrganization ? ' · ' + organizationDisplayName(state.currentOrganization) : ''}</div>
           ${user.bio ? `<div class="body-text center" style="max-width:320px; color:rgba(255,255,255,0.95);">${user.bio}</div>` : ''}
         </div>
-        ${!admin && streak > 0 ? `<span class="streak-badge" style="background:rgba(255,255,255,0.2); backdrop-filter:blur(4px);">🔥 ${streak} day streak</span>` : ''}
+        ${!admin && streak > 0 ? `<span class="streak-badge" style="background:rgba(255,255,255,0.2); backdrop-filter:blur(4px); box-shadow:none;">${ICONS.fire} ${streak} day streak</span>` : ''}
       </div>
 
       ${!admin ? `
         <div class="bento-grid">
           <div class="bento-card blue">
-            <span class="bento-icon">📝</span>
+            <span class="bento-icon">${ICONS.clipboard}</span>
             <div><div class="bento-value">${myLogs.length}</div><div class="bento-label">Logged Results</div></div>
           </div>
           <div class="bento-card green">
-            <span class="bento-icon">✅</span>
+            <span class="bento-icon">${ICONS.checkCircle}</span>
             <div><div class="bento-value">${completedWorkouts}</div><div class="bento-label">Workouts Done</div></div>
           </div>
           <button class="bento-card wide pink card-tappable" id="btn-view-clips" style="border:none; cursor:pointer; text-align:left; align-items:flex-start;">
-            <span class="bento-icon">🎬</span>
+            <span class="bento-icon">${ICONS.film}</span>
             <div><div class="bento-value">${clips.length}</div><div class="bento-label">Clips &amp; highlights — tap to view</div></div>
           </button>
         </div>

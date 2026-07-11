@@ -26,7 +26,7 @@ export function renderAthleteProgress(container, member, { onClose }) {
       </div>
 
       <button class="card card-tappable row gap-md" id="btn-view-clips">
-        <span style="font-size:20px;">🎬</span>
+        <span class="card-icon" style="color:var(--hue-pink-1);">${ICONS.film}</span>
         <div class="stack gap-xs" style="flex:1;">
           <div class="h-headline">View Clips &amp; Highlights</div>
           <div class="caption">${clipCount} clip${clipCount === 1 ? '' : 's'} posted</div>
