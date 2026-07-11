@@ -34,6 +34,7 @@ export const ICONS = {
   film: `<svg viewBox="0 0 24 24" fill="none"><rect x="3" y="4" width="18" height="16" rx="2" stroke="currentColor" stroke-width="1.8"/><path d="M8 4v16M16 4v16M3 9h5M16 9h5M3 15h5M16 15h5" stroke="currentColor" stroke-width="1.5"/></svg>`,
   checkCircle: `<svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.8"/><path d="M8 12.5l2.5 2.5L16 9" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
   wave: `<svg viewBox="0 0 24 24" fill="none"><path d="M8 13.5V6a1.5 1.5 0 013 0v5M11 11V4a1.5 1.5 0 013 0v7M14 11V5.5A1.5 1.5 0 0117 5.5V13M17 8.5A1.5 1.5 0 0120 8.5V15c0 3.5-2.5 6-6 6h-1c-2.8 0-4-1-5.5-3l-2.7-4.2c-.5-.8-.2-1.8.6-2.2.7-.4 1.6-.1 2 .6L7 13" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
+  calendarRest: `<svg viewBox="0 0 24 24" fill="none"><rect x="3" y="5" width="18" height="16" rx="2.5" stroke="currentColor" stroke-width="1.8"/><path d="M3 9h18M8 3v4M16 3v4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M8.5 14.5c.8.8 2.2.8 3 0s2.2-.8 3 0 2.2.8 3 0" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>`,
 };
 
 export const PLATFORM_LABEL = {

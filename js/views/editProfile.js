@@ -1,4 +1,4 @@
-import { h, mount, showToast } from '../components/dom.js';
+import { h, mount, showToast, emptyState } from '../components/dom.js';
 import { getState, updateProfile, addClip, removeClip, clipsForUser } from '../store.js';
 import { detectClipPlatform, uuid, makeClip } from '../models.js';
 import { PLATFORM_LABEL, ICONS } from '../components/icons.js';
@@ -94,7 +94,7 @@ export function renderEditProfile(container, { onDone, onClose, initialTab = 'pr
             </div>
 
             <div class="stack gap-sm">
-              ${clips.length ? clips.map(clipRow).join('') : `<div class="subheadline">No clips added yet.</div>`}
+              ${clips.length ? clips.map(clipRow).join('') : emptyState({ icon: ICONS.film, title: 'No clips added yet' })}
             </div>
           </div>
         </div>

@@ -1,4 +1,4 @@
-import { h, mount, showToast, avatarColorClass } from '../components/dom.js';
+import { h, mount, showToast, avatarColorClass, emptyState } from '../components/dom.js';
 import {
   getState, isAdmin, rosterMembers, clipFeedEntries, setClipsFilterAthlete,
   clipCommentsForClip, addClipComment, addClip, toggleClipLike, toggleClipReaction,
@@ -59,7 +59,7 @@ function clipPost(entry, { showAthleteName }) {
 
       <div class="row gap-sm" style="align-items:center;">
         <button class="pill-action-btn ${iLiked ? 'primary' : ''}" data-like-clip="${clip.id}" data-like-owner="${athleteId}">
-          ${iLiked ? ICONS.heart : ICONS.heartOutline}
+          <span style="display:inline-flex; ${iLiked ? 'animation: heart-pop 0.35s ease-out;' : ''}">${iLiked ? ICONS.heart : ICONS.heartOutline}</span>
           <span>${likes.length || ''} Like${likes.length === 1 ? '' : 's'}</span>
         </button>
       </div>
@@ -111,7 +111,11 @@ export function renderClips(container) {
 
         ${entries.length
           ? entries.map((entry) => clipPost(entry, { showAthleteName: admin })).join('')
-          : `<div class="card subheadline">${admin ? 'No clips posted by your athletes yet.' : 'No clips yet — add a YouTube skill video or a Veo/Trace game clip to get feedback from your coach.'}</div>`}
+          : `<div class="card">${emptyState({
+              icon: ICONS.film,
+              title: admin ? 'No clips yet' : 'No clips yet',
+              subtitle: admin ? 'Nothing posted by your athletes yet.' : 'Add a YouTube skill video, or a Veo/Trace game clip, to get feedback from your coach.',
+            })}</div>`}
       </div>
     `);
 

@@ -1,4 +1,4 @@
-import { h, mount, avatarColorClass } from '../components/dom.js';
+import { h, mount, avatarColorClass, emptyState } from '../components/dom.js';
 import {
   getState, conversationsForCurrentUser, messagesForConversation, sendMessage,
   messageableContacts, getOrCreateConversation,
@@ -54,7 +54,7 @@ export function renderMessages(container) {
             </div>
             ${entry.lastMessage ? `<div class="caption" style="flex-shrink:0;">${timeAgo(entry.lastMessage.createdAt)}</div>` : ''}
           </button>
-        `).join('') : `<div class="card subheadline">No conversations yet. Tap New to message a teammate or coach.</div>`}
+        `).join('') : `<div class="card">${emptyState({ icon: ICONS.mail, title: 'No messages yet', subtitle: 'Tap New to message a teammate or coach.' })}</div>`}
       </div>
     `);
 
@@ -86,7 +86,7 @@ export function renderMessages(container) {
             <div class="avatar ${avatarColorClass(c.id)}" style="width:40px;height:40px;font-size:14px;">${initialsOf(c.fullName)}</div>
             <div class="body-text" style="font-weight:600;">${c.fullName}</div>
           </button>
-        `).join('') : `<div class="card subheadline">No contacts available yet — join a team first.</div>`}
+        `).join('') : `<div class="card">${emptyState({ icon: ICONS.people, title: 'No contacts yet', subtitle: 'Join a team to message your coach or teammates.' })}</div>`}
       </div>
     `);
 

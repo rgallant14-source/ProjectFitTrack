@@ -46,3 +46,14 @@ export function categoryTag(block) {
   const cls = BLOCK_TAG_CLASS[block] || 'warmup';
   return `<span class="cat-tag ${cls}">${block}</span>`;
 }
+
+// Consistent empty-state markup: icon + title + optional subtitle, used
+// everywhere instead of a single flat line of gray text.
+export function emptyState({ icon, title, subtitle = '' }) {
+  return `
+    <div class="empty-state">
+      <div class="empty-icon">${icon}</div>
+      <div class="empty-title">${title}</div>
+      ${subtitle ? `<div class="empty-subtitle">${subtitle}</div>` : ''}
+    </div>`;
+}

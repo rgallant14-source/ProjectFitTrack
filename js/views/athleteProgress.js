@@ -1,4 +1,4 @@
-import { h, mount } from '../components/dom.js';
+import { h, mount, emptyState } from '../components/dom.js';
 import { logsForUser, workoutsForCurrentUser, clipsForUser, setClipsFilterAthlete, navigate } from '../store.js';
 import { ICONS } from '../components/icons.js';
 
@@ -47,7 +47,7 @@ export function renderAthleteProgress(container, member, { onClose }) {
           </div>
           ${log.notes ? `<div class="body-text">${log.notes}</div>` : ''}
         </div>
-      `).join('') : `<div class="card subheadline">No results logged yet.</div>`}
+      `).join('') : `<div class="card">${emptyState({ icon: ICONS.clipboard, title: 'No results yet', subtitle: `${member.fullName.split(' ')[0]} hasn't logged anything yet.` })}</div>`}
     </div>
   `);
 

@@ -1,4 +1,4 @@
-import { h, mount, categoryTag } from '../components/dom.js';
+import { h, mount, categoryTag, emptyState } from '../components/dom.js';
 import { ICONS } from '../components/icons.js';
 import { workoutsForCurrentUser, findLog, isAdmin, rosterMembers, overallCompletionForUser, currentStreakForUser, getState, logsForUser } from '../store.js';
 import { isSameDay } from '../models.js';
@@ -127,7 +127,7 @@ export function renderDashboard(container, { onOpenWorkout }) {
 
       <div class="stack gap-sm">
         <div class="h-headline">${admin ? "Today's Team Workout" : "Today's Workout"}</div>
-        ${today ? workoutRow(today) : `<div class="card subheadline">No workout scheduled today.</div>`}
+        ${today ? workoutRow(today) : `<div class="card">${emptyState({ icon: ICONS.calendarRest, title: 'No workout today', subtitle: 'Enjoy the rest — recovery is part of training too.' })}</div>`}
       </div>
 
       ${!admin ? equipmentCard(today) : ''}

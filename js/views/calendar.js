@@ -1,4 +1,4 @@
-import { h, mount, formatDate, categoryTag } from '../components/dom.js';
+import { h, mount, formatDate, categoryTag, emptyState } from '../components/dom.js';
 import { getState, workoutsForCurrentUser, setSelectedDate, practicesForCurrentUser, practiceRsvpStatus, setPracticeRsvp } from '../store.js';
 import { isSameDay } from '../models.js';
 import { ICONS } from '../components/icons.js';
@@ -101,7 +101,7 @@ export function renderCalendar(container, { onOpenWorkout }) {
 
           ${dayPractices.map(practiceCard).join('')}
 
-          ${!dayWorkouts.length && !dayPractices.length ? `<div class="card subheadline">Nothing scheduled for this day.</div>` : ''}
+          ${!dayWorkouts.length && !dayPractices.length ? `<div class="card">${emptyState({ icon: ICONS.calendarRest, title: 'Nothing scheduled', subtitle: 'No workout or practice on this day.' })}</div>` : ''}
         </div>
       </div>
     `);

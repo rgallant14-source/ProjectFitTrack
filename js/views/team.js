@@ -1,4 +1,4 @@
-import { h, mount, showToast, formatDate, avatarColorClass } from '../components/dom.js';
+import { h, mount, showToast, formatDate, avatarColorClass, emptyState } from '../components/dom.js';
 import { rosterMembers, overallCompletionForUser, workoutsForCurrentUser, deleteWorkout, adminOrganizations, switchOrganization, getState } from '../store.js';
 import { ICONS } from '../components/icons.js';
 import { organizationDisplayName } from '../models.js';
@@ -63,12 +63,12 @@ export function renderTeam(container, { onNewWorkout, onOpenAthlete }) {
 
         <div class="stack gap-sm">
           <div class="h-headline">Athlete Progress</div>
-          ${roster.length ? roster.map(rosterRow).join('') : `<div class="card subheadline">No athletes on this team's roster yet.</div>`}
+          ${roster.length ? roster.map(rosterRow).join('') : `<div class="card">${emptyState({ icon: ICONS.people, title: 'No athletes yet', subtitle: "This team's roster is empty so far." })}</div>`}
         </div>
 
         <div class="stack gap-sm">
           <div class="h-headline">Manage Workouts</div>
-          ${workouts.length ? workouts.map(workoutManageRow).join('') : `<div class="card subheadline">No workouts posted yet.</div>`}
+          ${workouts.length ? workouts.map(workoutManageRow).join('') : `<div class="card">${emptyState({ icon: ICONS.clipboard, title: 'No workouts posted', subtitle: 'Tap "New Workout" above to post the first one.' })}</div>`}
         </div>
       </div>
     `);

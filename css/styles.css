@@ -354,6 +354,58 @@ a { color: var(--accent-2); }
 .card-icon { width: 20px; height: 20px; display: inline-flex; flex-shrink: 0; }
 .card-icon svg { width: 100%; height: 100%; }
 
+/* ---------- Micro-interactions ---------- */
+@keyframes fade-slide-in { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes heart-pop { 0% { transform: scale(1); } 35% { transform: scale(1.3); } 60% { transform: scale(0.94); } 100% { transform: scale(1); } }
+@keyframes streak-pulse { 0%, 100% { box-shadow: 0 8px 20px -8px rgba(255,94,94,0.55); } 50% { box-shadow: 0 8px 26px -6px rgba(255,94,94,0.85); } }
+@keyframes check-pop { 0% { transform: scale(0.6); opacity: 0; } 60% { transform: scale(1.15); opacity: 1; } 100% { transform: scale(1); } }
+
+/* Direct children of a screen fade/slide in on mount, staggered slightly so
+   content feels like it's arriving rather than just appearing instantly. */
+.screen > * { animation: fade-slide-in 0.4s ease-out both; }
+.screen > *:nth-child(1) { animation-delay: 0s; }
+.screen > *:nth-child(2) { animation-delay: 0.04s; }
+.screen > *:nth-child(3) { animation-delay: 0.08s; }
+.screen > *:nth-child(4) { animation-delay: 0.12s; }
+.screen > *:nth-child(5) { animation-delay: 0.16s; }
+.screen > *:nth-child(6) { animation-delay: 0.2s; }
+.screen > *:nth-child(n+7) { animation-delay: 0.22s; }
+
+/* Tactile press feedback on every tappable control */
+.btn, .card-tappable, .pill-action-btn, .icon-btn, .tab-btn, .bento-card.card-tappable, .social-icon {
+  transition: transform 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
+}
+.btn:active, .card-tappable:active, .pill-action-btn:active, .icon-btn:active, .social-icon:active {
+  transform: scale(0.96);
+}
+.tab-btn { transition: color 0.2s ease; }
+.tab-btn:active .tab-icon { transform: scale(0.88); }
+.tab-icon { transition: transform 0.15s ease; }
+
+.streak-badge { animation: streak-pulse 2.4s ease-in-out infinite; }
+
+/* Animated progress ring fill + a pop when a checkmark completes */
+.ring-wrap circle:nth-child(2) { transition: stroke-dashoffset 0.7s cubic-bezier(0.22, 1, 0.36, 1); }
+.check-icon path:last-child, .check-icon circle { transition: all 0.2s ease; }
+.exercise-row .check-icon { animation: check-pop 0.3s ease-out; }
+
+.sheet-backdrop { animation: sheet-backdrop-fade 0.2s ease-out; }
+@keyframes sheet-backdrop-fade { from { background: rgba(0,0,0,0); } to { background: rgba(0,0,0,0.6); } }
+
+/* ---------- Empty states ---------- */
+.empty-state {
+  display: flex; flex-direction: column; align-items: center; text-align: center;
+  gap: 10px; padding: 32px 20px;
+}
+.empty-state .empty-icon {
+  width: 52px; height: 52px; border-radius: 50%;
+  background: var(--surface-elevated); display: flex; align-items: center; justify-content: center;
+  color: var(--text-tertiary);
+}
+.empty-state .empty-icon svg { width: 24px; height: 24px; }
+.empty-state .empty-title { font-size: 15.5px; font-weight: 700; color: var(--text-primary); }
+.empty-state .empty-subtitle { font-size: 13.5px; color: var(--text-secondary); max-width: 280px; line-height: 1.5; }
+
 /* ---------- Bento-style stat cards (dashboard/profile) ---------- */
 .bento-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .bento-card {
