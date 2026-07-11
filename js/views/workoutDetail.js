@@ -1,4 +1,4 @@
-import { h, mount, showToast } from '../components/dom.js';
+import { h, mount, showToast, categoryTag } from '../components/dom.js';
 import { getState, findLog, saveLog } from '../store.js';
 import { makeExerciseLog, uuid, BLOCKS } from '../models.js';
 import { ICONS } from '../components/icons.js';
@@ -24,7 +24,7 @@ function exerciseRowHtml(exercise, workout) {
       </svg>
       <div class="stack gap-xs" style="flex:1; text-align:left;">
         <div class="body-text" style="font-weight:600;">${exercise.name}</div>
-        <div class="caption">${exercise.block} · ${exercise.prescribed}</div>
+        <div class="row gap-xs" style="margin-top:2px;">${categoryTag(exercise.block)}<span class="caption">${exercise.prescribed}</span></div>
         ${tutorialHtml}
       </div>
       <svg class="chevron" width="16" height="16" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>

@@ -1,4 +1,4 @@
-import { h, mount, showToast, formatDate } from '../components/dom.js';
+import { h, mount, showToast, formatDate, avatarColorClass } from '../components/dom.js';
 import { rosterMembers, overallCompletionForUser, workoutsForCurrentUser, deleteWorkout, adminOrganizations, switchOrganization, getState } from '../store.js';
 import { ICONS } from '../components/icons.js';
 import { organizationDisplayName } from '../models.js';
@@ -15,7 +15,7 @@ function rosterRow(member) {
   const initials = member.fullName.split(' ').map((s) => s[0]).join('').toUpperCase();
   return `
     <button class="card card-tappable row gap-md" data-athlete-id="${member.id}" style="margin-bottom:8px;">
-      <div class="avatar" style="width:44px;height:44px;font-size:15px;flex-shrink:0;">${initials}</div>
+      <div class="avatar ${avatarColorClass(member.id)}" style="width:44px;height:44px;font-size:15px;flex-shrink:0;">${initials}</div>
       <div class="stack gap-xs" style="flex:1;">
         <div class="body-text" style="font-weight:600;">${member.fullName}</div>
         ${miniBar(fraction)}

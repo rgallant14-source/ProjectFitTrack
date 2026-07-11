@@ -1,4 +1,4 @@
-import { h, mount, formatDate } from '../components/dom.js';
+import { h, mount, formatDate, categoryTag } from '../components/dom.js';
 import { getState, workoutsForCurrentUser, setSelectedDate, practicesForCurrentUser, practiceRsvpStatus, setPracticeRsvp } from '../store.js';
 import { isSameDay } from '../models.js';
 import { ICONS } from '../components/icons.js';
@@ -87,12 +87,15 @@ export function renderCalendar(container, { onOpenWorkout }) {
           <div class="h-headline">${formatDate(getState().selectedDate)}</div>
 
           ${dayWorkouts.length ? dayWorkouts.map((w) => `
-            <button class="card card-tappable row" data-workout-id="${w.id}">
-              <div class="stack gap-xs" style="flex:1;">
-                <div class="h-headline">${w.title}</div>
-                <div class="caption">${w.dayLabel} · ${w.sessionLength} · ${w.exercises.length} exercises</div>
+            <button class="card card-tappable stack gap-sm" data-workout-id="${w.id}">
+              <div class="row">
+                <div class="stack gap-xs" style="flex:1;">
+                  <div class="h-headline">${w.title}</div>
+                  <div class="caption">${w.dayLabel} · ${w.sessionLength} · ${w.exercises.length} exercises</div>
+                </div>
+                <svg class="chevron" width="18" height="18" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
               </div>
-              <svg class="chevron" width="18" height="18" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+              <div class="row-wrap gap-xs">${[...new Set(w.exercises.map((ex) => ex.block))].slice(0, 3).map(categoryTag).join('')}</div>
             </button>
           `).join('') : ''}
 

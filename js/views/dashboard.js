@@ -1,30 +1,20 @@
-import { h, mount } from '../components/dom.js';
-import { workoutsForCurrentUser, findLog, isAdmin, rosterMembers, overallCompletionForUser } from '../store.js';
+import { h, mount, categoryTag } from '../components/dom.js';
+import { workoutsForCurrentUser, findLog, isAdmin, rosterMembers, overallCompletionForUser, currentStreakForUser, getState, logsForUser } from '../store.js';
 import { isSameDay } from '../models.js';
 import { equipmentForWorkout, quoteOfTheDay, highlightOfTheDay } from '../dailyContent.js';
 
-function progressRing(fraction) {
-  const r = 24, c = 2 * Math.PI * r;
-  const offset = c * (1 - fraction);
-  return `
-    <div class="ring-wrap">
-      <svg viewBox="0 0 56 56">
-        <circle cx="28" cy="28" r="${r}" fill="none" stroke="var(--surface-elevated)" stroke-width="6"/>
-        <circle cx="28" cy="28" r="${r}" fill="none" stroke="var(--accent)" stroke-width="6"
-          stroke-linecap="round" stroke-dasharray="${c}" stroke-dashoffset="${offset}"/>
-      </svg>
-      <div class="ring-label">${Math.round(fraction * 100)}%</div>
-    </div>`;
-}
-
 function workoutRow(workout) {
+  const blocks = [...new Set(workout.exercises.map((ex) => ex.block))].slice(0, 3);
   return `
-    <button class="card card-tappable row" data-workout-id="${workout.id}" style="margin-bottom:8px;">
-      <div class="stack gap-xs" style="flex:1;">
-        <div class="h-headline">${workout.title}</div>
-        <div class="caption">${workout.dayLabel} · ${workout.sessionLength} · ${workout.exercises.length} exercises</div>
+    <button class="card card-tappable stack gap-sm" data-workout-id="${workout.id}" style="margin-bottom:8px;">
+      <div class="row">
+        <div class="stack gap-xs" style="flex:1;">
+          <div class="h-headline">${workout.title}</div>
+          <div class="caption">${workout.dayLabel} · ${workout.sessionLength} · ${workout.exercises.length} exercises</div>
+        </div>
+        <svg class="chevron" width="18" height="18" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
       </div>
-      <svg class="chevron" width="18" height="18" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+      <div class="row-wrap gap-xs">${blocks.map(categoryTag).join('')}</div>
     </button>`;
 }
 
@@ -75,21 +65,29 @@ export function renderDashboard(container, { onOpenWorkout }) {
   const today = workouts.find((w) => isSameDay(w.date, new Date()));
   const upcoming = workouts.filter((w) => new Date(w.date) > new Date()).sort((a, b) => new Date(a.date) - new Date(b.date)).slice(0, 3);
   const admin = isAdmin();
+  const user = getState().currentUser;
 
-  let summaryCard;
+  let bento;
   if (admin) {
-    // Admins get a team-wide snapshot instead of a personal progress ring —
-    // their own completion percentage isn't meaningful here.
+    // Admins get a team-wide snapshot instead of personal stats.
     const roster = rosterMembers();
-    const avg = roster.length
-      ? roster.reduce((sum, m) => sum + overallCompletionForUser(m.id), 0) / roster.length
+    const avgPct = roster.length
+      ? Math.round((roster.reduce((sum, m) => sum + overallCompletionForUser(m.id), 0) / roster.length) * 100)
       : 0;
-    summaryCard = `
-      <div class="card row gap-md">
-        ${progressRing(avg)}
-        <div class="stack gap-xs">
-          <div class="h-headline">Team Completion</div>
-          <div class="caption">${roster.length} athlete${roster.length === 1 ? '' : 's'} · average across assigned workouts</div>
+    const totalLogged = roster.reduce((sum, m) => sum + logsForUser(m.id).length, 0);
+    bento = `
+      <div class="bento-grid">
+        <div class="bento-card blue">
+          <span class="bento-icon">📊</span>
+          <div><div class="bento-value">${avgPct}%</div><div class="bento-label">Team Completion</div></div>
+        </div>
+        <div class="bento-card orange">
+          <span class="bento-icon">👥</span>
+          <div><div class="bento-value">${roster.length}</div><div class="bento-label">Athletes</div></div>
+        </div>
+        <div class="bento-card wide purple">
+          <span class="bento-icon">📝</span>
+          <div><div class="bento-value">${totalLogged}</div><div class="bento-label">Results logged this week across your team</div></div>
         </div>
       </div>`;
   } else {
@@ -98,21 +96,33 @@ export function renderDashboard(container, { onOpenWorkout }) {
       const logged = today.exercises.filter((ex) => findLog(ex.id, today.id)).length;
       fraction = logged / today.exercises.length;
     }
-    summaryCard = `
-      <div class="card row gap-md">
-        ${progressRing(fraction)}
-        <div class="stack gap-xs">
-          <div class="h-headline">Today's Progress</div>
-          <div class="caption">${fraction >= 1 ? 'All exercises logged' : 'Keep going — log your results'}</div>
+    const streak = currentStreakForUser(user.id);
+    const totalLogged = logsForUser(user.id).length;
+    bento = `
+      <div class="bento-grid">
+        <div class="bento-card blue">
+          <span class="bento-icon">⚡</span>
+          <div><div class="bento-value">${Math.round(fraction * 100)}%</div><div class="bento-label">Today's Progress</div></div>
+        </div>
+        <div class="bento-card orange">
+          <span class="bento-icon">🔥</span>
+          <div><div class="bento-value">${streak}</div><div class="bento-label">Day Streak</div></div>
+        </div>
+        <div class="bento-card wide green">
+          <span class="bento-icon">📈</span>
+          <div><div class="bento-value">${totalLogged}</div><div class="bento-label">Total results logged — keep it up!</div></div>
         </div>
       </div>`;
   }
 
   const node = h(`
     <div class="screen stack gap-lg">
-      <h1 class="h-hero">Dashboard</h1>
+      <div class="row-between">
+        <h1 class="h-hero">Hey, ${user.fullName.split(' ')[0]} 👋</h1>
+        ${!admin && currentStreakForUser(user.id) > 0 ? `<span class="streak-badge">🔥 ${currentStreakForUser(user.id)}</span>` : ''}
+      </div>
 
-      ${summaryCard}
+      ${bento}
 
       <div class="stack gap-sm">
         <div class="h-headline">${admin ? "Today's Team Workout" : "Today's Workout"}</div>

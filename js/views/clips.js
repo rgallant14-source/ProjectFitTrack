@@ -1,4 +1,4 @@
-import { h, mount, showToast } from '../components/dom.js';
+import { h, mount, showToast, avatarColorClass } from '../components/dom.js';
 import {
   getState, isAdmin, rosterMembers, clipFeedEntries, setClipsFilterAthlete,
   clipCommentsForClip, addClipComment, addClip, toggleClipLike, toggleClipReaction,
@@ -42,7 +42,7 @@ function clipPost(entry, { showAthleteName }) {
     <div class="card stack gap-md" data-clip-post="${clip.id}" data-athlete-id="${athleteId}">
       ${showAthleteName ? `
         <div class="row gap-sm">
-          <div class="avatar" style="width:32px; height:32px; font-size:12px;">${initials}</div>
+          <div class="avatar ${avatarColorClass(athleteId)}" style="width:32px; height:32px; font-size:12px;">${initials}</div>
           <div class="stack gap-xs">
             <div class="caption" style="color:var(--text-primary); font-weight:700;">${athleteName}</div>
             <div class="caption">${timeAgo(clip.addedAt)}</div>
@@ -70,7 +70,7 @@ function clipPost(entry, { showAthleteName }) {
         <div class="caption" style="font-weight:700; color:var(--text-primary);">${comments.length ? `${comments.length} comment${comments.length === 1 ? '' : 's'}` : 'Critique this clip'}</div>
         ${comments.map((c) => `
           <div class="row gap-sm" style="align-items:flex-start;">
-            <div class="avatar" style="width:26px;height:26px;font-size:10px;flex-shrink:0;">${c.authorName.split(' ').map((s) => s[0]).join('').toUpperCase()}</div>
+            <div class="avatar ${avatarColorClass(c.authorId)}" style="width:26px;height:26px;font-size:10px;flex-shrink:0;">${c.authorName.split(' ').map((s) => s[0]).join('').toUpperCase()}</div>
             <div class="stack gap-xs">
               <div class="caption"><span style="color:var(--text-primary); font-weight:700;">${c.authorName}</span> ${c.authorRole === 'admin' ? '· Coach' : ''} · ${timeAgo(c.createdAt)}</div>
               <div class="body-text">${c.text}</div>

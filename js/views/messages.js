@@ -1,4 +1,4 @@
-import { h, mount } from '../components/dom.js';
+import { h, mount, avatarColorClass } from '../components/dom.js';
 import {
   getState, conversationsForCurrentUser, messagesForConversation, sendMessage,
   messageableContacts, getOrCreateConversation,
@@ -47,7 +47,7 @@ export function renderMessages(container) {
 
         ${entries.length ? entries.map((entry) => `
           <button class="card card-tappable row gap-md" data-conversation-id="${entry.conversation.id}" style="margin-bottom:8px;">
-            <div class="avatar" style="width:44px;height:44px;font-size:15px;flex-shrink:0;">${initialsOf(entry.otherName)}</div>
+            <div class="avatar ${avatarColorClass(entry.otherId)}" style="width:44px;height:44px;font-size:15px;flex-shrink:0;">${initialsOf(entry.otherName)}</div>
             <div class="stack gap-xs" style="flex:1; min-width:0;">
               <div class="body-text" style="font-weight:600;">${entry.otherName}</div>
               <div class="caption" style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${entry.lastMessage ? entry.lastMessage.text : 'Say hello 👋'}</div>
@@ -83,7 +83,7 @@ export function renderMessages(container) {
 
         ${contacts.length ? contacts.map((c) => `
           <button class="card card-tappable row gap-md" data-contact-id="${c.id}" data-contact-name="${c.fullName}" style="margin-bottom:8px;">
-            <div class="avatar" style="width:40px;height:40px;font-size:14px;">${initialsOf(c.fullName)}</div>
+            <div class="avatar ${avatarColorClass(c.id)}" style="width:40px;height:40px;font-size:14px;">${initialsOf(c.fullName)}</div>
             <div class="body-text" style="font-weight:600;">${c.fullName}</div>
           </button>
         `).join('') : `<div class="card subheadline">No contacts available yet — join a team first.</div>`}

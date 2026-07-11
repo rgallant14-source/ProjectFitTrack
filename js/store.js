@@ -255,6 +255,24 @@ export function logsForUser(userId) {
   return state.logs.filter((l) => l.userId === userId);
 }
 
+// Consecutive days (ending today or yesterday) this user has logged at
+// least one exercise result — the "streak" stat used on Dashboard/Profile.
+export function currentStreakForUser(userId) {
+  const logDates = new Set(
+    logsForUser(userId).map((l) => new Date(l.completedAt).toDateString())
+  );
+  let streak = 0;
+  const cursor = new Date();
+  // If nothing logged today yet, streak can still count from yesterday
+  // backward so a morning check-in doesn't show "0" before today's workout.
+  if (!logDates.has(cursor.toDateString())) cursor.setDate(cursor.getDate() - 1);
+  while (logDates.has(cursor.toDateString())) {
+    streak += 1;
+    cursor.setDate(cursor.getDate() - 1);
+  }
+  return streak;
+}
+
 export function saveLog(logDraft) {
   const idx = state.logs.findIndex((l) => l.id === logDraft.id);
   if (idx >= 0) state.logs[idx] = logDraft;

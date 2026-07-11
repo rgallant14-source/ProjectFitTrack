@@ -34,6 +34,22 @@
 
   --tab-bar-height: 64px;
   --safe-bottom: env(safe-area-inset-bottom, 0px);
+
+  /* Category colors — used to color-tag exercise blocks and give the app
+     visual variety instead of everything being one accent color. */
+  --cat-warmup: #6b7280;
+  --cat-strength: #ff6b6b;
+  --cat-agility: #2fe0a8;
+  --cat-ball: #4f8cff;
+  --cat-technical: #ffb84d;
+  --cat-recovery: #8b7bff;
+
+  /* Bento-grid gradient variants for stat/content cards */
+  --grad-orange: linear-gradient(135deg, #ff9d4d 0%, #ff5e5e 100%);
+  --grad-pink: linear-gradient(135deg, #ff5ea8 0%, #ff8b5e 100%);
+  --grad-green: linear-gradient(135deg, #2fe0a8 0%, #4f8cff 100%);
+  --grad-blue: linear-gradient(135deg, #4f8cff 0%, #6a5cff 100%);
+  --grad-purple: linear-gradient(135deg, #8b5cf6 0%, #ff5ea8 100%);
 }
 
 * { box-sizing: border-box; }
@@ -311,6 +327,66 @@ input[type="range"] { width: 100%; accent-color: var(--accent); }
 .hero-icon { font-size: 56px; text-align: center; }
 .center { text-align: center; }
 a { color: var(--accent-2); }
+
+/* ---------- Bento-style stat cards (dashboard/profile) ---------- */
+.bento-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.bento-card {
+  border-radius: var(--radius-card); padding: 16px; color: #fff;
+  display: flex; flex-direction: column; justify-content: space-between;
+  min-height: 100px; position: relative; overflow: hidden;
+}
+.bento-card .bento-value { font-size: 26px; font-weight: 800; letter-spacing: -0.02em; }
+.bento-card .bento-label { font-size: 12px; font-weight: 600; opacity: 0.9; margin-top: 2px; }
+.bento-card .bento-icon { font-size: 20px; opacity: 0.95; }
+.bento-card.wide { grid-column: 1 / -1; }
+.bento-card.orange { background: var(--grad-orange); }
+.bento-card.pink { background: var(--grad-pink); }
+.bento-card.green { background: var(--grad-green); }
+.bento-card.blue { background: var(--grad-blue); }
+.bento-card.purple { background: var(--grad-purple); }
+
+/* ---------- Category tags ---------- */
+.cat-tag {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em;
+  padding: 4px 10px; border-radius: var(--radius-pill); color: #fff;
+}
+.cat-tag.warmup { background: var(--cat-warmup); }
+.cat-tag.strength { background: var(--cat-strength); }
+.cat-tag.agility { background: var(--cat-agility); color: #06251c; }
+.cat-tag.ballskills { background: var(--cat-ball); }
+.cat-tag.technical { background: var(--cat-technical); color: #4a2b00; }
+.cat-tag.recovery { background: var(--cat-recovery); }
+
+/* ---------- Streak badge ---------- */
+.streak-badge {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: linear-gradient(135deg, #ff9d4d, #ff5e5e);
+  color: #fff; font-weight: 800; font-size: 14px;
+  padding: 6px 14px; border-radius: var(--radius-pill);
+}
+
+/* ---------- Profile hero header ---------- */
+.profile-hero {
+  border-radius: var(--radius-card);
+  background: var(--gradient-primary);
+  padding: 28px 20px 20px;
+  display: flex; flex-direction: column; align-items: center; gap: 10px;
+  position: relative; overflow: hidden;
+}
+.profile-hero::before {
+  content: ''; position: absolute; inset: 0;
+  background: radial-gradient(circle at 20% 0%, rgba(255,255,255,0.25), transparent 55%);
+}
+.profile-hero > * { position: relative; z-index: 1; }
+.profile-hero .avatar-ring { background: rgba(255,255,255,0.9); }
+
+/* Rotating avatar color set for roster/feed variety instead of one repeated gradient */
+.avatar.c0 { background: var(--grad-blue); }
+.avatar.c1 { background: var(--grad-pink); }
+.avatar.c2 { background: var(--grad-green); }
+.avatar.c3 { background: var(--grad-orange); }
+.avatar.c4 { background: var(--grad-purple); }
 
 @media (min-width: 640px) {
   .app-shell { padding-bottom: var(--space-xl); }
