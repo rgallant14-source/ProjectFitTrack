@@ -2,7 +2,7 @@ import { h, mount, showToast, formatDate, avatarColorClass, emptyState } from '.
 import {
   rosterMembers, overallCompletionForUser, workoutsForCurrentUser, deleteWorkout,
   adminOrganizations, switchOrganization, getState, reportsVisibleToModerator,
-  resolveReport, directoryName,
+  resolveReport, directoryName, isAdminVerified,
 } from '../store.js';
 import { ICONS } from '../components/icons.js';
 import { organizationDisplayName } from '../models.js';
@@ -33,7 +33,10 @@ function workoutManageRow(workout) {
   return `
     <div class="card row gap-md" style="margin-bottom:8px;">
       <div class="stack gap-xs" style="flex:1;">
-        <div class="body-text" style="font-weight:600;">${workout.title}</div>
+        <div class="row gap-xs" style="align-items:center;">
+          <div class="body-text" style="font-weight:600;">${workout.title}</div>
+          ${!workout.createdByVerified ? '<span class="caption" style="color:var(--warning); font-weight:700;">Pending Verification</span>' : ''}
+        </div>
         <div class="caption">${workout.dayLabel} · ${formatDate(workout.date, { month: 'short', day: 'numeric' })} · Assigned: ${assignedLabel}</div>
       </div>
       <button class="icon-btn icon-btn-sm danger" data-delete-id="${workout.id}">${ICONS.trash}</button>
@@ -55,7 +58,7 @@ function reportRow(report) {
     </div>`;
 }
 
-export function renderTeam(container, { onNewWorkout, onOpenAthlete, onGenerateInvite, onBulkUpload, onCreateTeam }) {
+export function renderTeam(container, { onNewWorkout, onOpenAthlete, onGenerateInvite, onBulkUpload, onCreateTeam, onVerificationIntake }) {
   function draw() {
     const roster = rosterMembers();
     const workouts = workoutsForCurrentUser().sort((a, b) => new Date(b.date) - new Date(a.date));
@@ -63,6 +66,7 @@ export function renderTeam(container, { onNewWorkout, onOpenAthlete, onGenerateI
     const activeOrgId = getState().currentOrganization?.id;
     const reports = reportsVisibleToModerator();
     const hasNoTeams = myOrgs.length === 0;
+    const verified = isAdminVerified();
 
     const node = h(`
       <div class="screen stack gap-lg">
@@ -70,6 +74,14 @@ export function renderTeam(container, { onNewWorkout, onOpenAthlete, onGenerateI
           <h1 class="h-hero">Team</h1>
           <button class="pill-action-btn primary" id="btn-new-workout" ${hasNoTeams ? 'disabled' : ''}>${ICONS.plus} New Workout</button>
         </div>
+
+        ${!verified ? `
+          <div class="card stack gap-sm" style="border:1px solid var(--warning);">
+            <div class="caption row gap-xs" style="font-weight:700; color:var(--text-primary);">${ICONS.shield} Account Pending Verification</div>
+            <div class="caption">You can still set up your team and post workouts, but messaging athletes and parents is unavailable until you're verified.</div>
+            <button class="btn btn-secondary" id="btn-verify-banner">Verify Your Account</button>
+          </div>
+        ` : ''}
 
         ${hasNoTeams ? `
           <div class="card stack gap-sm" style="border:1px solid rgba(139,92,246,0.4);">
@@ -140,6 +152,7 @@ export function renderTeam(container, { onNewWorkout, onOpenAthlete, onGenerateI
     node.querySelector('#btn-bulk-upload').addEventListener('click', onBulkUpload);
     node.querySelector('#btn-create-team').addEventListener('click', onCreateTeam);
     node.querySelector('#btn-create-team-empty')?.addEventListener('click', onCreateTeam);
+    node.querySelector('#btn-verify-banner')?.addEventListener('click', onVerificationIntake);
 
     node.querySelectorAll('[data-resolve-report]').forEach((btn) => {
       btn.addEventListener('click', () => {

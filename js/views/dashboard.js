@@ -10,7 +10,10 @@ function workoutRow(workout, teamNameById) {
     <button class="card card-tappable stack gap-sm" data-workout-id="${workout.id}" style="margin-bottom:8px;">
       <div class="row">
         <div class="stack gap-xs" style="flex:1;">
-          <div class="h-headline">${workout.title}</div>
+          <div class="row gap-xs" style="align-items:center;">
+            <div class="h-headline">${workout.title}</div>
+            ${!workout.createdByVerified ? '<span class="caption" style="color:var(--warning); font-weight:700;">Pending Verification</span>' : ''}
+          </div>
           <div class="caption">${teamNameById ? teamNameById[workout.organizationId] + ' · ' : ''}${workout.dayLabel} · ${workout.sessionLength} · ${workout.exercises.length} exercises</div>
         </div>
         <svg class="chevron" width="18" height="18" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>

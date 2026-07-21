@@ -5,10 +5,10 @@ import {
 import {
   makeUser, makeWorkout, makeClip, userAge, uuid, isWorkoutVisibleToUser,
   makeFamilyLink, makeReport, makeTeamInviteCode, randomInviteCode, makeExercise,
-  makeOrganization, generateJoinCode,
+  makeOrganization, generateJoinCode, makeVerificationRequest,
 } from './models.js';
 
-const STORAGE_KEY = 'fittrack_state_v11';
+const STORAGE_KEY = 'fittrack_state_v12';
 
 /**
  * This store is the web equivalent of the SwiftUI ViewModels: it holds
@@ -31,11 +31,13 @@ function persist(state) {
     currentUser, currentOrganization, logs, notificationsEnabled, workouts, clips,
     clipComments, practices, practiceRsvps, conversations, messages,
     blockedByUser, reports, familyLinks, teamInviteCodes, rosterByOrg, organizations,
+    verificationRequests,
   } = state;
   localStorage.setItem(STORAGE_KEY, JSON.stringify({
     currentUser, currentOrganization, logs, notificationsEnabled, workouts, clips,
     clipComments, practices, practiceRsvps, conversations, messages,
     blockedByUser, reports, familyLinks, teamInviteCodes, rosterByOrg, organizations,
+    verificationRequests,
   }));
 }
 
@@ -104,6 +106,11 @@ const state = {
   // for whether that specific parent can see their message activity.
   familyLinks: persisted?.familyLinks ?? [],
 
+  // Coach identity/affiliation intake submissions — see
+  // makeVerificationRequest in models.js and isAdminVerified below for
+  // what this can and can't actually enforce without a backend yet.
+  verificationRequests: persisted?.verificationRequests ?? [],
+
   // Single-use codes for attaching an ADDITIONAL team to an existing
   // athlete account after signup — see makeTeamInviteCode in models.js.
   teamInviteCodes: persisted?.teamInviteCodes ?? [],
@@ -135,6 +142,62 @@ export function isAdmin() {
 
 export function isParent() {
   return state.currentUser?.role === 'parent';
+}
+
+// Whether the current admin can message anyone at all. Athletes/parents
+// are never subject to this — it's specifically about the "anyone can
+// spin up a fake coach account" risk. NOTE: this only reads a field on
+// the user's OWN client-side record. With no backend yet, "verified" is
+// not a real trust boundary — see setAdminVerifiedForTesting below for
+// exactly what that means and how to test this locally in the meantime.
+export function isAdminVerified() {
+  if (!isAdmin()) return true; // the gate only applies to admin accounts
+  return state.currentUser?.verificationStatus === 'approved';
+}
+
+// ---------- Coach identity/affiliation intake ----------
+// Collects club/league info for a future real review queue. Submitting
+// does NOT change verificationStatus — there's nowhere trustworthy for
+// that decision to be made yet (see isAdminVerified's note). One
+// submission per admin — resubmitting replaces it rather than stacking,
+// since there's no queue yet to process duplicates anyway.
+
+export function submitVerificationRequest({ clubName, league = '', websiteUrl = '', note = '' }) {
+  const user = state.currentUser;
+  if (!user || !isAdmin()) return null;
+  if (!clubName?.trim()) {
+    state.errorMessage = 'Club or organization name is required.';
+    notify();
+    return null;
+  }
+  state.verificationRequests = state.verificationRequests.filter((r) => r.adminId !== user.id);
+  const request = makeVerificationRequest({
+    id: uuid(), adminId: user.id, clubName: clubName.trim(), league: league.trim(), websiteUrl: websiteUrl.trim(), note: note.trim(),
+  });
+  state.verificationRequests.push(request);
+  state.errorMessage = null;
+  notify();
+  return request;
+}
+
+export function verificationRequestForCurrentUser() {
+  const user = state.currentUser;
+  if (!user) return null;
+  return state.verificationRequests.find((r) => r.adminId === user.id) ?? null;
+}
+
+// TEST-MODE ONLY. There is no real approval mechanism yet — this exists
+// purely so the restricted-state behavior (blocked messaging, "pending
+// verification" tags on workouts, etc.) can actually be exercised and
+// tested locally before a backend exists to make this decision for real.
+// It flips a field on the CURRENT device's own local copy of the account,
+// which anyone could do to themselves in DevTools — so it must never be
+// treated as, or presented to real users as, a genuine approval flow.
+// Delete this function once real backend-issued approval exists.
+export function setAdminVerifiedForTesting(verified) {
+  if (!isAdmin() || !state.currentUser) return;
+  state.currentUser.verificationStatus = verified ? 'approved' : 'pending';
+  notify();
 }
 
 // Every team org id an athlete belongs to. Falls back to the older
@@ -236,6 +299,12 @@ export async function signUp({ fullName, email, phone = '', role, organizationId
   const user = makeUser({ id: uuid(), fullName, email, phone, dateOfBirth: dob, role });
   user.adminOrgIds = role === 'admin' ? [] : undefined;
   user.organizationIds = role === 'athlete' ? [] : undefined;
+  // Every real signup starts unverified — this is the actual gate: an
+  // unverified admin can still explore the app and set up a team, but
+  // can't message anyone (see isAdminVerified enforcement below), so a
+  // scripted signup produces an inert account rather than one that can
+  // reach real athletes.
+  user.verificationStatus = role === 'admin' ? 'pending' : undefined;
 
   // A team code was already validated before verification even started
   // (see requestSignupVerification) — apply it now that the account is
@@ -284,7 +353,14 @@ export async function logIn({ email, role = 'athlete' }) {
     socialLinks: isAthlete ? { instagram: 'instagram.com/jordan.casey', youtube: 'youtube.com/@jordancasey' } : {},
   });
   // Demo admin manages two teams — this is what powers the team switcher.
-  if (role === 'admin') user.adminOrgIds = [ORGANIZATIONS[0].id, ORGANIZATIONS[1].id];
+  if (role === 'admin') {
+    user.adminOrgIds = [ORGANIZATIONS[0].id, ORGANIZATIONS[1].id];
+    // The quick-login demo account is a convenience path for testing, same
+    // spirit as the demo parent auto-linking with sharing pre-enabled —
+    // it's pre-verified so reviewers can see the full messaging experience
+    // without also having to fake their way through a real signup.
+    user.verificationStatus = 'approved';
+  }
   if (isAthlete) user.organizationIds = [sampleOrg.id];
 
   state.currentUser = user;
@@ -707,6 +783,7 @@ export function createWorkout(draft) {
     organizationId: state.currentOrganization?.id ?? null,
     assignedTo: draft.assignedTo, // 'all' or array of athlete IDs
     createdBy: state.currentUser?.id ?? null,
+    createdByVerified: isAdminVerified(),
   });
   state.workouts.push(workout);
   notify();
@@ -969,6 +1046,7 @@ export function directoryName(userId) {
 export function messageableContacts() {
   const user = state.currentUser;
   if (!user) return [];
+  if (!isAdminVerified()) return []; // unverified admins can't message anyone at all
 
   let contacts;
   if (isAdmin()) {
@@ -998,7 +1076,7 @@ export function messageableContacts() {
 // approves it. Blocked pairs are excluded here too.
 export function requestableProspects() {
   const user = state.currentUser;
-  if (!user || !isAdmin()) return [];
+  if (!user || !isAdmin() || !isAdminVerified()) return [];
   const myOrgIds = new Set(user.adminOrgIds ?? []);
   const seen = new Map();
   Object.keys(state.rosterByOrg).forEach((orgId) => {
@@ -1014,6 +1092,7 @@ function conversationKey(idA, idB) {
 
 export function getOrCreateConversation(otherUserId, otherUserName) {
   const user = state.currentUser;
+  if (!user || !isAdminVerified()) return null;
   const existing = state.conversations.find((c) => conversationKey(...c.participantIds) === conversationKey(user.id, otherUserId));
   if (existing) return existing;
   const conversation = {
@@ -1035,7 +1114,7 @@ export function getOrCreateConversation(otherUserId, otherUserName) {
 // either side can send anything further.
 export function sendMessageRequest(otherUserId, otherUserName, initialText) {
   const user = state.currentUser;
-  if (!user || !initialText.trim()) return null;
+  if (!user || !initialText.trim() || !isAdminVerified()) return null;
   const existing = state.conversations.find((c) => conversationKey(...c.participantIds) === conversationKey(user.id, otherUserId));
   if (existing) return existing;
   const conversation = {
@@ -1121,7 +1200,7 @@ export function messagesForConversation(conversationId) {
 }
 
 export function sendMessage(conversationId, text) {
-  if (!state.currentUser || !text.trim()) return;
+  if (!state.currentUser || !text.trim() || !isAdminVerified()) return;
   const conversation = state.conversations.find((c) => c.id === conversationId);
   // Can't message into a still-pending request (beyond the request itself)
   // or with someone either side has blocked.

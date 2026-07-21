@@ -4,6 +4,7 @@ import {
   workoutsForCurrentUser, navigate, currentStreakForUser, linkedAthleteForCurrentParent,
   unlinkParent, parentLinksForAthlete, setShareMessagesWithParent, blockedUserIds,
   unblockUser, directoryName, organizationsForCurrentUser, adminOrganizations,
+  isAdminVerified, setAdminVerifiedForTesting,
 } from '../store.js';
 import { requestNotificationPermission } from '../notifications.js';
 import { ICONS } from '../components/icons.js';
@@ -17,7 +18,7 @@ function socialIcon(platform, url) {
   return `<a class="social-icon ${has ? '' : 'empty'}" href="${has ? href : '#'}" target="${has ? '_blank' : ''}" rel="noopener" data-empty="${!has}" data-platform="${platform}">${ICONS[platform]}</a>`;
 }
 
-export function renderProfile(container, { onJoinOrg, onEditProfile, onViewHistory, onAddTeam, onGenerateInvite, onCreateTeam }) {
+export function renderProfile(container, { onJoinOrg, onEditProfile, onViewHistory, onAddTeam, onGenerateInvite, onCreateTeam, onVerificationIntake }) {
   function draw() {
     const state = getState();
     const user = state.currentUser;
@@ -38,6 +39,7 @@ export function renderProfile(container, { onJoinOrg, onEditProfile, onViewHisto
     const myBlocked = blockedUserIds(user.id);
     const myTeams = athlete ? organizationsForCurrentUser() : [];
     const myManagedTeams = admin ? adminOrganizations() : [];
+    const verified = admin ? isAdminVerified() : true;
 
     const node = h(`
       <div class="screen stack gap-lg">
@@ -157,6 +159,28 @@ export function renderProfile(container, { onJoinOrg, onEditProfile, onViewHisto
             <button class="card card-tappable" id="btn-create-team-profile" style="color:var(--accent-2); font-weight:600;">+ Create a Team</button>
             <button class="card card-tappable" id="btn-join-org" style="color:var(--accent-2); font-weight:600;">+ Join an Existing Team</button>
           </div>
+
+          <div class="stack gap-sm">
+            <div class="h-headline">Account Verification</div>
+            <div class="card row-between">
+              <div class="stack gap-xs">
+                <div class="body-text" style="font-weight:600;">${verified ? 'Verified' : 'Pending Verification'}</div>
+                <div class="caption">${verified ? 'Messaging and every coach feature is available.' : "Messaging athletes and parents is unavailable until you're verified."}</div>
+              </div>
+              <button class="btn btn-secondary btn-pill-sm" id="btn-open-verification">${verified ? 'View' : 'Verify'}</button>
+            </div>
+          </div>
+
+          <div class="stack gap-sm">
+            <div class="h-headline" style="color:var(--warning);">\u26a0\ufe0f Test Mode (temporary)</div>
+            <div class="card stack gap-sm">
+              <div class="caption">This toggle only exists because there's no real backend to approve accounts yet \u2014 it lets you test the verified/unverified experience locally. It will be removed once real approval exists, and anyone could flip this on themselves in their own browser, so it is NOT a real security control.</div>
+              <label class="row-between" style="cursor:pointer;">
+                <span class="body-text">Simulate verified status (testing only)</span>
+                <input id="test-mode-toggle" type="checkbox" ${verified ? 'checked' : ''} />
+              </label>
+            </div>
+          </div>
         `}
 
         <div class="stack gap-sm">
@@ -190,6 +214,12 @@ export function renderProfile(container, { onJoinOrg, onEditProfile, onViewHisto
     node.querySelector('#btn-view-history')?.addEventListener('click', onViewHistory);
     node.querySelector('#btn-join-org')?.addEventListener('click', onJoinOrg);
     node.querySelector('#btn-create-team-profile')?.addEventListener('click', onCreateTeam);
+    node.querySelector('#btn-open-verification')?.addEventListener('click', onVerificationIntake);
+    node.querySelector('#test-mode-toggle')?.addEventListener('change', (e) => {
+      setAdminVerifiedForTesting(e.target.checked);
+      showToast(e.target.checked ? 'Test mode: simulating verified' : 'Test mode: simulating pending');
+      draw();
+    });
     node.querySelector('#btn-add-team')?.addEventListener('click', onAddTeam);
     node.querySelector('#btn-generate-invite')?.addEventListener('click', onGenerateInvite);
     node.querySelector('#btn-unlink')?.addEventListener('click', () => {

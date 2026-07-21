@@ -1,6 +1,6 @@
 import { h, mount, avatarColorClass, emptyState, escapeHtml, showToast } from '../components/dom.js';
 import {
-  getState, isParent, conversationsForCurrentUser, messagesForConversation, sendMessage,
+  getState, isParent, isAdmin, isAdminVerified, navigate, conversationsForCurrentUser, messagesForConversation, sendMessage,
   messageableContacts, getOrCreateConversation, requestableProspects, sendMessageRequest,
   pendingMessageRequestsForCurrentUser, acceptMessageRequest, declineMessageRequest,
   blockUser, conversationsForLinkedAthlete, linkedAthleteForCurrentParent,
@@ -27,6 +27,10 @@ export function renderMessages(container) {
   // own conversations, only (optionally) visibility into their linked
   // athlete's — and a shot at approving that athlete's message requests.
   if (isParent()) return renderParentMessages(container);
+
+  // Unverified coach accounts can't message anyone at all — see
+  // isAdminVerified in store.js for what "unverified" means today.
+  if (isAdmin() && !isAdminVerified()) return renderUnverifiedAdminBlock(container);
 
   // 'list' | 'thread' | 'newMessage' | 'newRequest' — kept as local
   // view-state since it's purely navigational within this one tab.
@@ -416,4 +420,24 @@ function renderParentMessages(container) {
   }
 
   draw();
+}
+
+// Shown instead of the normal Messages tab for a coach account that
+// hasn't been verified yet — see isAdminVerified in store.js.
+function renderUnverifiedAdminBlock(container) {
+  const node = h(`
+    <div class="screen stack gap-lg">
+      <h1 class="h-hero">Messages</h1>
+      <div class="card">
+        ${emptyState({
+          icon: ICONS.shield,
+          title: 'Messaging is unavailable',
+          subtitle: "Your coaching account isn't verified yet, so you can't message athletes or parents. Everything else \u2014 creating a team, posting workouts \u2014 still works.",
+        })}
+        <button class="btn btn-primary" id="btn-go-verify" style="margin-top:16px; width:100%;">Verify Your Account</button>
+      </div>
+    </div>
+  `);
+  node.querySelector('#btn-go-verify').addEventListener('click', () => navigate('profile'));
+  mount(container, node);
 }

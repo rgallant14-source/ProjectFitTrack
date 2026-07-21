@@ -63,6 +63,15 @@ export const REPORT_REASONS = [
   'Something else',
 ];
 
+// A coach/admin's submission of identity/affiliation info for review.
+// Nothing here actually approves anyone — there's no backend yet to hold
+// a decision the applicant can't edit themselves, so this only ever
+// collects the intake data. See store.js's isAdminVerified /
+// setAdminVerifiedForTesting for exactly what that limitation means today.
+export function makeVerificationRequest({ id, adminId, clubName, league = '', websiteUrl = '', note = '', submittedAt = new Date().toISOString() }) {
+  return { id, adminId, clubName, league, websiteUrl, note, submittedAt };
+}
+
 // A single highlight/review clip an athlete has linked into their profile.
 // Sourced from YouTube (embeddable) or game-camera systems like Veo/Trace
 // (share-link only — those platforms don't support third-party embedding).
@@ -137,9 +146,15 @@ export function makeExercise({ id, name, block, prescribed, tutorialUrl = null }
   return { id, name, block, prescribed, tutorialUrl };
 }
 
-export function makeWorkout({ id, title, date, weekNumber, dayLabel, sessionLength, exercises, organizationId = null, assignedTo = 'all', createdBy = null }) {
+export function makeWorkout({ id, title, date, weekNumber, dayLabel, sessionLength, exercises, organizationId = null, assignedTo = 'all', createdBy = null, createdByVerified = true }) {
   // assignedTo: 'all' (everyone in the org) or an array of specific user IDs.
-  return { id, title, date, weekNumber, dayLabel, sessionLength, exercises, organizationId, assignedTo, createdBy };
+  // createdByVerified is a snapshot of the coach's verification status at
+  // the moment this was posted — see isAdminVerified in store.js. It's a
+  // snapshot rather than a live lookup because there's no real user
+  // directory yet (only the current session's own account is ever fully
+  // known); once a backend exists this should become a live lookup instead
+  // so a workout's tag updates if the coach is later approved.
+  return { id, title, date, weekNumber, dayLabel, sessionLength, exercises, organizationId, assignedTo, createdBy, createdByVerified };
 }
 
 export function isWorkoutVisibleToUser(workout, userId) {

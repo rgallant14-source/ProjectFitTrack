@@ -22,6 +22,7 @@ import { renderAddTeam } from './views/addTeam.js';
 import { renderGenerateInvite } from './views/generateInvite.js';
 import { renderBulkUpload } from './views/bulkUpload.js';
 import { renderCreateTeam } from './views/createTeam.js';
+import { renderVerificationIntake } from './views/verificationIntake.js';
 
 const appEl = document.getElementById('app');
 const tabBar = document.getElementById('tab-bar');
@@ -63,13 +64,14 @@ function renderAuthedApp() {
   } else if (state.route === 'clips') {
     renderClips(appEl);
   } else if (state.route === 'team') {
-    renderTeam(appEl, { onNewWorkout: openWorkoutForm, onOpenAthlete: openAthleteProgress, onGenerateInvite: openGenerateInvite, onBulkUpload: openBulkUpload, onCreateTeam: openCreateTeam });
+    renderTeam(appEl, { onNewWorkout: openWorkoutForm, onOpenAthlete: openAthleteProgress, onGenerateInvite: openGenerateInvite, onBulkUpload: openBulkUpload, onCreateTeam: openCreateTeam, onVerificationIntake: openVerificationIntake });
   } else if (state.route === 'messages') {
     renderMessages(appEl);
   } else if (state.route === 'profile') {
     renderProfile(appEl, {
       onJoinOrg: openOrgJoin, onEditProfile: openEditProfile, onViewHistory: openProgressHistory,
       onAddTeam: openAddTeam, onGenerateInvite: openGenerateInvite, onCreateTeam: openCreateTeam,
+      onVerificationIntake: openVerificationIntake,
     });
   }
 }
@@ -131,6 +133,12 @@ function openCreateTeam() {
   const wrapper = document.body.appendChild(document.createElement('div'));
   const cleanup = () => { wrapper.remove(); render(); };
   renderCreateTeam(wrapper, { onDone: cleanup, onClose: cleanup });
+}
+
+function openVerificationIntake() {
+  const wrapper = document.body.appendChild(document.createElement('div'));
+  const cleanup = () => { wrapper.remove(); render(); };
+  renderVerificationIntake(wrapper, { onClose: cleanup });
 }
 
 // Shown once, right after a brand-new parent account is created — the

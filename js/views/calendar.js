@@ -97,7 +97,10 @@ export function renderCalendar(container, { onOpenWorkout }) {
             <button class="card card-tappable stack gap-sm" data-workout-id="${w.id}">
               <div class="row">
                 <div class="stack gap-xs" style="flex:1;">
-                  <div class="h-headline">${w.title}</div>
+                  <div class="row gap-xs" style="align-items:center;">
+                    <div class="h-headline">${w.title}</div>
+                    ${!w.createdByVerified ? '<span class="caption" style="color:var(--warning); font-weight:700;">Pending Verification</span>' : ''}
+                  </div>
                   <div class="caption">${teamNameById ? teamNameById[w.organizationId] + ' · ' : ''}${w.dayLabel} · ${w.sessionLength} · ${w.exercises.length} exercises</div>
                 </div>
                 <svg class="chevron" width="18" height="18" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
