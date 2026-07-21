@@ -105,6 +105,22 @@ export function makeOrganization({ id, name, sport, joinCode, memberIds = [], te
   return { id, name, sport, joinCode, memberIds, teamName };
 }
 
+// Readable auto-generated join code for a newly created team — based on
+// the team name rather than fully random, so it's still easy for a coach
+// to read aloud or type from memory, same spirit as the seeded demo codes
+// (RIVERSIDE24, etc). Retries on an unlikely collision with an existing code.
+export function generateJoinCode(baseName, existingCodes = []) {
+  const base = (baseName || 'TEAM').replace(/[^a-zA-Z0-9]/g, '').toUpperCase().slice(0, 10) || 'TEAM';
+  const taken = new Set(existingCodes.map((c) => c.toUpperCase()));
+  let code = `${base}${Math.floor(10 + Math.random() * 90)}`;
+  let attempts = 0;
+  while (taken.has(code) && attempts < 20) {
+    code = `${base}${Math.floor(100 + Math.random() * 900)}`;
+    attempts += 1;
+  }
+  return code;
+}
+
 export function organizationDisplayName(org) {
   if (!org) return '';
   return org.teamName ? `${org.name} — ${org.teamName}` : org.name;

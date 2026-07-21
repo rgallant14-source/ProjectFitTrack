@@ -55,22 +55,39 @@ function reportRow(report) {
     </div>`;
 }
 
-export function renderTeam(container, { onNewWorkout, onOpenAthlete, onGenerateInvite, onBulkUpload }) {
+export function renderTeam(container, { onNewWorkout, onOpenAthlete, onGenerateInvite, onBulkUpload, onCreateTeam }) {
   function draw() {
     const roster = rosterMembers();
     const workouts = workoutsForCurrentUser().sort((a, b) => new Date(b.date) - new Date(a.date));
     const myOrgs = adminOrganizations();
     const activeOrgId = getState().currentOrganization?.id;
     const reports = reportsVisibleToModerator();
+    const hasNoTeams = myOrgs.length === 0;
 
     const node = h(`
       <div class="screen stack gap-lg">
         <div class="row-between">
           <h1 class="h-hero">Team</h1>
-          <button class="pill-action-btn primary" id="btn-new-workout">${ICONS.plus} New Workout</button>
+          <button class="pill-action-btn primary" id="btn-new-workout" ${hasNoTeams ? 'disabled' : ''}>${ICONS.plus} New Workout</button>
         </div>
 
-        <button class="card card-tappable row gap-md" id="btn-invite-athlete">
+        ${hasNoTeams ? `
+          <div class="card stack gap-sm" style="border:1px solid rgba(139,92,246,0.4);">
+            <div class="h-headline">Create Your First Team</div>
+            <div class="caption">You don't manage any teams yet — create one to start posting workouts and inviting athletes.</div>
+            <button class="btn btn-primary" id="btn-create-team-empty">Create a Team</button>
+          </div>
+        ` : ''}
+
+        <button class="card card-tappable row gap-md" id="btn-create-team">
+          <span class="card-icon">${ICONS.plus}</span>
+          <div class="stack gap-xs" style="flex:1;">
+            <div class="h-headline">Create a Team</div>
+            <div class="caption">Set up a new club or squad and get a join code to share</div>
+          </div>
+        </button>
+
+        <button class="card card-tappable row gap-md" id="btn-invite-athlete" ${hasNoTeams ? 'disabled' : ''}>
           <span class="card-icon">${ICONS.familyLink}</span>
           <div class="stack gap-xs" style="flex:1;">
             <div class="h-headline">Invite an Athlete to a Team</div>
@@ -78,7 +95,7 @@ export function renderTeam(container, { onNewWorkout, onOpenAthlete, onGenerateI
           </div>
         </button>
 
-        <button class="card card-tappable row gap-md" id="btn-bulk-upload">
+        <button class="card card-tappable row gap-md" id="btn-bulk-upload" ${hasNoTeams ? 'disabled' : ''}>
           <span class="card-icon">${ICONS.download}</span>
           <div class="stack gap-xs" style="flex:1;">
             <div class="h-headline">Bulk Upload Workouts</div>
@@ -104,21 +121,25 @@ export function renderTeam(container, { onNewWorkout, onOpenAthlete, onGenerateI
           </div>
         ` : ''}
 
-        <div class="stack gap-sm">
-          <div class="h-headline">Athlete Progress</div>
-          ${roster.length ? roster.map(rosterRow).join('') : `<div class="card">${emptyState({ icon: ICONS.people, title: 'No athletes yet', subtitle: "This team's roster is empty so far." })}</div>`}
-        </div>
+        ${!hasNoTeams ? `
+          <div class="stack gap-sm">
+            <div class="h-headline">Athlete Progress</div>
+            ${roster.length ? roster.map(rosterRow).join('') : `<div class="card">${emptyState({ icon: ICONS.people, title: 'No athletes yet', subtitle: "This team's roster is empty so far." })}</div>`}
+          </div>
 
-        <div class="stack gap-sm">
-          <div class="h-headline">Manage Workouts</div>
-          ${workouts.length ? workouts.map(workoutManageRow).join('') : `<div class="card">${emptyState({ icon: ICONS.clipboard, title: 'No workouts posted', subtitle: 'Tap "New Workout" above to post the first one.' })}</div>`}
-        </div>
+          <div class="stack gap-sm">
+            <div class="h-headline">Manage Workouts</div>
+            ${workouts.length ? workouts.map(workoutManageRow).join('') : `<div class="card">${emptyState({ icon: ICONS.clipboard, title: 'No workouts posted', subtitle: 'Tap "New Workout" above to post the first one.' })}</div>`}
+          </div>
+        ` : ''}
       </div>
     `);
 
     node.querySelector('#btn-new-workout').addEventListener('click', onNewWorkout);
     node.querySelector('#btn-invite-athlete').addEventListener('click', onGenerateInvite);
     node.querySelector('#btn-bulk-upload').addEventListener('click', onBulkUpload);
+    node.querySelector('#btn-create-team').addEventListener('click', onCreateTeam);
+    node.querySelector('#btn-create-team-empty')?.addEventListener('click', onCreateTeam);
 
     node.querySelectorAll('[data-resolve-report]').forEach((btn) => {
       btn.addEventListener('click', () => {

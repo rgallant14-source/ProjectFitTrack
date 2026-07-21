@@ -5,9 +5,10 @@ import {
 import {
   makeUser, makeWorkout, makeClip, userAge, uuid, isWorkoutVisibleToUser,
   makeFamilyLink, makeReport, makeTeamInviteCode, randomInviteCode, makeExercise,
+  makeOrganization, generateJoinCode,
 } from './models.js';
 
-const STORAGE_KEY = 'fittrack_state_v10';
+const STORAGE_KEY = 'fittrack_state_v11';
 
 /**
  * This store is the web equivalent of the SwiftUI ViewModels: it holds
@@ -29,12 +30,12 @@ function persist(state) {
   const {
     currentUser, currentOrganization, logs, notificationsEnabled, workouts, clips,
     clipComments, practices, practiceRsvps, conversations, messages,
-    blockedByUser, reports, familyLinks, teamInviteCodes, rosterByOrg,
+    blockedByUser, reports, familyLinks, teamInviteCodes, rosterByOrg, organizations,
   } = state;
   localStorage.setItem(STORAGE_KEY, JSON.stringify({
     currentUser, currentOrganization, logs, notificationsEnabled, workouts, clips,
     clipComments, practices, practiceRsvps, conversations, messages,
-    blockedByUser, reports, familyLinks, teamInviteCodes, rosterByOrg,
+    blockedByUser, reports, familyLinks, teamInviteCodes, rosterByOrg, organizations,
   }));
 }
 
@@ -55,10 +56,11 @@ const state = {
 
   // All known organizations (directory) and their per-org rosters. An
   // admin can manage more than one of these — see currentUser.adminOrgIds.
-  // Rosters are persisted (not just re-seeded) because redeeming an
-  // additional-team invite code adds the athlete to that org's roster —
-  // without this, a page reload would silently drop them back off it.
-  organizations: ORGANIZATIONS,
+  // Both are persisted (not just re-derived from the seed each load):
+  // rosters change when an athlete redeems an additional-team invite code,
+  // and the organizations list itself grows when a coach creates a new
+  // team at runtime (see createOrganization below).
+  organizations: persisted?.organizations ?? ORGANIZATIONS,
   rosterByOrg: persisted?.rosterByOrg ?? seedRosterByOrg(),
 
   // Workouts / logs
@@ -563,7 +565,7 @@ export function addAdditionalTeam(code) {
 export function workoutsForCurrentUser() {
   if (isAdmin()) {
     const orgId = state.currentOrganization?.id ?? null;
-    return state.workouts.filter((w) => !orgId || w.organizationId === orgId);
+    return orgId ? state.workouts.filter((w) => w.organizationId === orgId) : [];
   }
   const orgIds = athleteOrgIds(state.currentUser);
   return state.workouts.filter((w) => orgIds.includes(w.organizationId) && isWorkoutVisibleToUser(w, state.currentUser?.id));
@@ -672,6 +674,25 @@ export function parentDashboardStats() {
     totalPastWorkouts: pastWorkouts.length,
     recentLogs: [...logs].sort((a, b) => new Date(b.completedAt) - new Date(a.completedAt)).slice(0, 5),
   };
+}
+
+// Lets a coach/admin create a brand new team rather than only ever being
+// able to join one of the ones already seeded — without this, nobody
+// running their own club could actually set it up in the app. The new
+// team is immediately added to this admin's managed list and switched to,
+// with an auto-generated join code they can hand out to athletes/parents.
+export function createOrganization({ name, teamName, sport }) {
+  const user = state.currentUser;
+  if (!user || !isAdmin()) return null;
+  const joinCode = generateJoinCode(teamName || name, state.organizations.map((o) => o.joinCode));
+  const org = makeOrganization({ id: uuid(), name, teamName, sport, joinCode });
+  state.organizations.push(org);
+  state.rosterByOrg[org.id] = [];
+  user.adminOrgIds = user.adminOrgIds ?? [];
+  user.adminOrgIds.push(org.id);
+  state.currentOrganization = org;
+  notify();
+  return org;
 }
 
 export function createWorkout(draft) {
@@ -838,7 +859,7 @@ export function toggleClipReaction(ownerId, clipId, emoji) {
 export function practicesForCurrentUser() {
   if (isAdmin()) {
     const orgId = state.currentOrganization?.id ?? null;
-    return state.practices.filter((p) => !orgId || p.organizationId === orgId);
+    return orgId ? state.practices.filter((p) => p.organizationId === orgId) : [];
   }
   const orgIds = athleteOrgIds(state.currentUser);
   return state.practices.filter((p) => orgIds.includes(p.organizationId));

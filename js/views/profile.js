@@ -3,7 +3,7 @@ import {
   getState, logOut, setNotificationsEnabled, isAdmin, isParent, logsForUser, clipsForUser,
   workoutsForCurrentUser, navigate, currentStreakForUser, linkedAthleteForCurrentParent,
   unlinkParent, parentLinksForAthlete, setShareMessagesWithParent, blockedUserIds,
-  unblockUser, directoryName, organizationsForCurrentUser,
+  unblockUser, directoryName, organizationsForCurrentUser, adminOrganizations,
 } from '../store.js';
 import { requestNotificationPermission } from '../notifications.js';
 import { ICONS } from '../components/icons.js';
@@ -17,7 +17,7 @@ function socialIcon(platform, url) {
   return `<a class="social-icon ${has ? '' : 'empty'}" href="${has ? href : '#'}" target="${has ? '_blank' : ''}" rel="noopener" data-empty="${!has}" data-platform="${platform}">${ICONS[platform]}</a>`;
 }
 
-export function renderProfile(container, { onJoinOrg, onEditProfile, onViewHistory, onAddTeam, onGenerateInvite }) {
+export function renderProfile(container, { onJoinOrg, onEditProfile, onViewHistory, onAddTeam, onGenerateInvite, onCreateTeam }) {
   function draw() {
     const state = getState();
     const user = state.currentUser;
@@ -37,6 +37,7 @@ export function renderProfile(container, { onJoinOrg, onEditProfile, onViewHisto
     const myParentLinks = athlete ? parentLinksForAthlete(user.id) : [];
     const myBlocked = blockedUserIds(user.id);
     const myTeams = athlete ? organizationsForCurrentUser() : [];
+    const myManagedTeams = admin ? adminOrganizations() : [];
 
     const node = h(`
       <div class="screen stack gap-lg">
@@ -146,14 +147,15 @@ export function renderProfile(container, { onJoinOrg, onEditProfile, onViewHisto
           </div>
         ` : `
           <div class="stack gap-sm">
-            <div class="h-headline">Organization</div>
-            ${state.currentOrganization
-              ? `<div class="card stack gap-xs">
-                   <div class="body-text" style="font-weight:600;">${organizationDisplayName(state.currentOrganization)}</div>
-                   <div class="caption">${state.currentOrganization.sport}</div>
-                 </div>`
-              : `<button class="card card-tappable" id="btn-join-org" style="color:var(--accent-2); font-weight:600;">+ Join a Team</button>`
-            }
+            <div class="h-headline">Teams You Manage</div>
+            ${myManagedTeams.map((org) => `
+              <div class="card stack gap-xs">
+                <div class="body-text" style="font-weight:600;">${organizationDisplayName(org)}</div>
+                <div class="caption">${org.sport} \u00b7 Join code: ${org.joinCode}</div>
+              </div>
+            `).join('')}
+            <button class="card card-tappable" id="btn-create-team-profile" style="color:var(--accent-2); font-weight:600;">+ Create a Team</button>
+            <button class="card card-tappable" id="btn-join-org" style="color:var(--accent-2); font-weight:600;">+ Join an Existing Team</button>
           </div>
         `}
 
@@ -187,6 +189,7 @@ export function renderProfile(container, { onJoinOrg, onEditProfile, onViewHisto
     node.querySelector('#btn-view-clips')?.addEventListener('click', () => navigate('clips'));
     node.querySelector('#btn-view-history')?.addEventListener('click', onViewHistory);
     node.querySelector('#btn-join-org')?.addEventListener('click', onJoinOrg);
+    node.querySelector('#btn-create-team-profile')?.addEventListener('click', onCreateTeam);
     node.querySelector('#btn-add-team')?.addEventListener('click', onAddTeam);
     node.querySelector('#btn-generate-invite')?.addEventListener('click', onGenerateInvite);
     node.querySelector('#btn-unlink')?.addEventListener('click', () => {
