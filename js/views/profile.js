@@ -3,7 +3,7 @@ import {
   getState, logOut, setNotificationsEnabled, isAdmin, isParent, logsForUser, clipsForUser,
   workoutsForCurrentUser, navigate, currentStreakForUser, linkedAthleteForCurrentParent,
   unlinkParent, parentLinksForAthlete, setShareMessagesWithParent, blockedUserIds,
-  unblockUser, directoryName,
+  unblockUser, directoryName, organizationsForCurrentUser,
 } from '../store.js';
 import { requestNotificationPermission } from '../notifications.js';
 import { ICONS } from '../components/icons.js';
@@ -17,7 +17,7 @@ function socialIcon(platform, url) {
   return `<a class="social-icon ${has ? '' : 'empty'}" href="${has ? href : '#'}" target="${has ? '_blank' : ''}" rel="noopener" data-empty="${!has}" data-platform="${platform}">${ICONS[platform]}</a>`;
 }
 
-export function renderProfile(container, { onJoinOrg, onEditProfile, onViewHistory }) {
+export function renderProfile(container, { onJoinOrg, onEditProfile, onViewHistory, onAddTeam, onGenerateInvite }) {
   function draw() {
     const state = getState();
     const user = state.currentUser;
@@ -36,6 +36,7 @@ export function renderProfile(container, { onJoinOrg, onEditProfile, onViewHisto
     const linkedAthlete = parent ? linkedAthleteForCurrentParent() : null;
     const myParentLinks = athlete ? parentLinksForAthlete(user.id) : [];
     const myBlocked = blockedUserIds(user.id);
+    const myTeams = athlete ? organizationsForCurrentUser() : [];
 
     const node = h(`
       <div class="screen stack gap-lg">
@@ -54,7 +55,7 @@ export function renderProfile(container, { onJoinOrg, onEditProfile, onViewHisto
           </div>
           <div class="stack gap-xs" style="align-items:center;">
             <div class="h-title" style="color:#fff;">${user.fullName}</div>
-            <div class="caption" style="color:rgba(255,255,255,0.85);">${ROLE_LABEL[user.role]}${state.currentOrganization && !parent ? ' · ' + organizationDisplayName(state.currentOrganization) : ''}</div>
+            <div class="caption" style="color:rgba(255,255,255,0.85);">${ROLE_LABEL[user.role]}${athlete && myTeams.length ? ' · ' + (myTeams.length === 1 ? organizationDisplayName(myTeams[0]) : `${myTeams.length} teams`) : (admin && state.currentOrganization ? ' · ' + organizationDisplayName(state.currentOrganization) : '')}</div>
             ${user.bio ? `<div class="body-text center" style="max-width:320px; color:rgba(255,255,255,0.95);">${user.bio}</div>` : ''}
           </div>
           ${athlete && streak > 0 ? `<span class="streak-badge" style="background:rgba(255,255,255,0.2); backdrop-filter:blur(4px); box-shadow:none;">${ICONS.fire} ${streak} day streak</span>` : ''}
@@ -124,6 +125,24 @@ export function renderProfile(container, { onJoinOrg, onEditProfile, onViewHisto
                 <button class="btn btn-secondary btn-pill-sm" id="btn-unlink">Unlink</button>
               </div>
             ` : `<button class="card card-tappable" id="btn-join-org" style="color:var(--accent-2); font-weight:600;">+ Link Your Athlete</button>`}
+            <button class="card card-tappable row gap-md" id="btn-generate-invite">
+              <span class="card-icon">${ICONS.familyLink}</span>
+              <div class="stack gap-xs" style="flex:1;">
+                <div class="h-headline">Invite to Another Team</div>
+                <div class="caption">Turn a team's join code into a one-time code for your athlete</div>
+              </div>
+            </button>
+          </div>
+        ` : athlete ? `
+          <div class="stack gap-sm">
+            <div class="h-headline">Teams</div>
+            ${myTeams.map((org) => `
+              <div class="card stack gap-xs">
+                <div class="body-text" style="font-weight:600;">${organizationDisplayName(org)}</div>
+                <div class="caption">${org.sport}</div>
+              </div>
+            `).join('')}
+            <button class="card card-tappable" id="btn-add-team" style="color:var(--accent-2); font-weight:600;">+ Add Another Team</button>
           </div>
         ` : `
           <div class="stack gap-sm">
@@ -168,6 +187,8 @@ export function renderProfile(container, { onJoinOrg, onEditProfile, onViewHisto
     node.querySelector('#btn-view-clips')?.addEventListener('click', () => navigate('clips'));
     node.querySelector('#btn-view-history')?.addEventListener('click', onViewHistory);
     node.querySelector('#btn-join-org')?.addEventListener('click', onJoinOrg);
+    node.querySelector('#btn-add-team')?.addEventListener('click', onAddTeam);
+    node.querySelector('#btn-generate-invite')?.addEventListener('click', onGenerateInvite);
     node.querySelector('#btn-unlink')?.addEventListener('click', () => {
       if (!confirm(`Unlink from ${linkedAthlete?.fullName}? You'll stop seeing their activity here.`)) return;
       unlinkParent();

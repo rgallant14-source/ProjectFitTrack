@@ -1,6 +1,6 @@
 import { h, mount, formatDate, categoryTag, emptyState } from '../components/dom.js';
-import { getState, workoutsForCurrentUser, setSelectedDate, practicesForCurrentUser, practiceRsvpStatus, setPracticeRsvp } from '../store.js';
-import { isSameDay } from '../models.js';
+import { getState, workoutsForCurrentUser, setSelectedDate, practicesForCurrentUser, practiceRsvpStatus, setPracticeRsvp, isAdmin, organizationsForCurrentUser } from '../store.js';
+import { isSameDay, organizationDisplayName } from '../models.js';
 import { ICONS } from '../components/icons.js';
 
 const DOW = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
@@ -44,6 +44,13 @@ export function renderCalendar(container, { onOpenWorkout }) {
   const practices = practicesForCurrentUser();
   const selected = new Date(getState().selectedDate);
   let viewDate = new Date(selected.getFullYear(), selected.getMonth(), 1);
+
+  // Only worth labeling which team a workout belongs to when the athlete
+  // is actually on more than one — avoids clutter for the common case.
+  const myTeams = !isAdmin() ? organizationsForCurrentUser() : [];
+  const teamNameById = myTeams.length > 1
+    ? Object.fromEntries(myTeams.map((o) => [o.id, organizationDisplayName(o)]))
+    : null;
 
   function draw() {
     const days = buildMonthGrid(viewDate);
@@ -91,7 +98,7 @@ export function renderCalendar(container, { onOpenWorkout }) {
               <div class="row">
                 <div class="stack gap-xs" style="flex:1;">
                   <div class="h-headline">${w.title}</div>
-                  <div class="caption">${w.dayLabel} · ${w.sessionLength} · ${w.exercises.length} exercises</div>
+                  <div class="caption">${teamNameById ? teamNameById[w.organizationId] + ' · ' : ''}${w.dayLabel} · ${w.sessionLength} · ${w.exercises.length} exercises</div>
                 </div>
                 <svg class="chevron" width="18" height="18" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
               </div>

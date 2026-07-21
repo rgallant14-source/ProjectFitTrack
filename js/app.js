@@ -18,6 +18,9 @@ import { renderEditProfile } from './views/editProfile.js';
 import { renderClips } from './views/clips.js';
 import { renderMessages } from './views/messages.js';
 import { renderProgressHistory } from './views/progressHistory.js';
+import { renderAddTeam } from './views/addTeam.js';
+import { renderGenerateInvite } from './views/generateInvite.js';
+import { renderBulkUpload } from './views/bulkUpload.js';
 
 const appEl = document.getElementById('app');
 const tabBar = document.getElementById('tab-bar');
@@ -59,11 +62,14 @@ function renderAuthedApp() {
   } else if (state.route === 'clips') {
     renderClips(appEl);
   } else if (state.route === 'team') {
-    renderTeam(appEl, { onNewWorkout: openWorkoutForm, onOpenAthlete: openAthleteProgress });
+    renderTeam(appEl, { onNewWorkout: openWorkoutForm, onOpenAthlete: openAthleteProgress, onGenerateInvite: openGenerateInvite, onBulkUpload: openBulkUpload });
   } else if (state.route === 'messages') {
     renderMessages(appEl);
   } else if (state.route === 'profile') {
-    renderProfile(appEl, { onJoinOrg: openOrgJoin, onEditProfile: openEditProfile, onViewHistory: openProgressHistory });
+    renderProfile(appEl, {
+      onJoinOrg: openOrgJoin, onEditProfile: openEditProfile, onViewHistory: openProgressHistory,
+      onAddTeam: openAddTeam, onGenerateInvite: openGenerateInvite,
+    });
   }
 }
 
@@ -100,6 +106,24 @@ function openOrgJoin() {
   const wrapper = document.body.appendChild(document.createElement('div'));
   const cleanup = () => { wrapper.remove(); render(); };
   renderOrgJoin(wrapper, { onDone: cleanup, onClose: cleanup });
+}
+
+function openAddTeam() {
+  const wrapper = document.body.appendChild(document.createElement('div'));
+  const cleanup = () => { wrapper.remove(); render(); };
+  renderAddTeam(wrapper, { onDone: cleanup, onClose: cleanup });
+}
+
+function openGenerateInvite() {
+  const wrapper = document.body.appendChild(document.createElement('div'));
+  const cleanup = () => { wrapper.remove(); render(); };
+  renderGenerateInvite(wrapper, { onClose: cleanup });
+}
+
+function openBulkUpload() {
+  const wrapper = document.body.appendChild(document.createElement('div'));
+  const cleanup = () => { wrapper.remove(); render(); };
+  renderBulkUpload(wrapper, { onDone: cleanup, onClose: cleanup });
 }
 
 // Shown once, right after a brand-new parent account is created — the

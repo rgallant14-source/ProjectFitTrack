@@ -2,6 +2,26 @@
 // Workout, Exercise, ExerciseLog). No classes needed — these are just typed
 // shapes; the "type safety" lives in how consistently we call these factories.
 
+// A single-use, personally issued code for attaching an ADDITIONAL team to
+// an existing athlete account — distinct from the blanket team join codes
+// used at signup. Only a coach/admin who manages that team, or the
+// athlete's own linked parent (who has to already possess that team's
+// blanket join code as proof of legitimate association), can mint one.
+export function makeTeamInviteCode({ id, code, organizationId, issuedByUserId, issuedByName, issuedByRole, createdAt = new Date().toISOString(), redeemedByUserId = null, redeemedAt = null }) {
+  return { id, code, organizationId, issuedByUserId, issuedByName, issuedByRole, createdAt, redeemedByUserId, redeemedAt };
+}
+
+// Deliberately shaped differently from the plain "RIVERSIDE24"-style team
+// codes (dash, no vowel-heavy word), so it visually reads as a one-time
+// personal invite rather than a roster-wide code someone might casually
+// pass around.
+export function randomInviteCode() {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // no 0/O/1/I ambiguity
+  let raw = '';
+  for (let i = 0; i < 8; i++) raw += chars[Math.floor(Math.random() * chars.length)];
+  return `${raw.slice(0, 4)}-${raw.slice(4)}`;
+}
+
 export function makeUser({ id, fullName, email, phone = '', dateOfBirth, role, organizationId = null, socialLinks = {}, bio = '' }) {
   return {
     id, fullName, email, phone, dateOfBirth, role, organizationId, bio,

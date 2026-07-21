@@ -1,17 +1,17 @@
 import { h, mount, categoryTag, emptyState } from '../components/dom.js';
 import { ICONS } from '../components/icons.js';
-import { workoutsForCurrentUser, findLog, isAdmin, rosterMembers, overallCompletionForUser, currentStreakForUser, getState, logsForUser } from '../store.js';
-import { isSameDay } from '../models.js';
+import { workoutsForCurrentUser, findLog, isAdmin, rosterMembers, overallCompletionForUser, currentStreakForUser, getState, logsForUser, organizationsForCurrentUser } from '../store.js';
+import { isSameDay, organizationDisplayName } from '../models.js';
 import { equipmentForWorkout, quoteOfTheDay, highlightOfTheDay } from '../dailyContent.js';
 
-function workoutRow(workout) {
+function workoutRow(workout, teamNameById) {
   const blocks = [...new Set(workout.exercises.map((ex) => ex.block))].slice(0, 3);
   return `
     <button class="card card-tappable stack gap-sm" data-workout-id="${workout.id}" style="margin-bottom:8px;">
       <div class="row">
         <div class="stack gap-xs" style="flex:1;">
           <div class="h-headline">${workout.title}</div>
-          <div class="caption">${workout.dayLabel} · ${workout.sessionLength} · ${workout.exercises.length} exercises</div>
+          <div class="caption">${teamNameById ? teamNameById[workout.organizationId] + ' · ' : ''}${workout.dayLabel} · ${workout.sessionLength} · ${workout.exercises.length} exercises</div>
         </div>
         <svg class="chevron" width="18" height="18" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
       </div>
@@ -67,6 +67,13 @@ export function renderDashboard(container, { onOpenWorkout }) {
   const upcoming = workouts.filter((w) => new Date(w.date) > new Date()).sort((a, b) => new Date(a.date) - new Date(b.date)).slice(0, 3);
   const admin = isAdmin();
   const user = getState().currentUser;
+
+  // Only worth labeling which team a workout belongs to when the athlete
+  // is actually on more than one — avoids clutter for the common case.
+  const myTeams = !admin ? organizationsForCurrentUser() : [];
+  const teamNameById = myTeams.length > 1
+    ? Object.fromEntries(myTeams.map((o) => [o.id, organizationDisplayName(o)]))
+    : null;
 
   let bento;
   if (admin) {
@@ -127,7 +134,7 @@ export function renderDashboard(container, { onOpenWorkout }) {
 
       <div class="stack gap-sm">
         <div class="h-headline">${admin ? "Today's Team Workout" : "Today's Workout"}</div>
-        ${today ? workoutRow(today) : `<div class="card">${emptyState({ icon: ICONS.calendarRest, title: 'No workout today', subtitle: 'Enjoy the rest — recovery is part of training too.' })}</div>`}
+        ${today ? workoutRow(today, teamNameById) : `<div class="card">${emptyState({ icon: ICONS.calendarRest, title: 'No workout today', subtitle: 'Enjoy the rest — recovery is part of training too.' })}</div>`}
       </div>
 
       ${!admin ? equipmentCard(today) : ''}
@@ -139,7 +146,7 @@ export function renderDashboard(container, { onOpenWorkout }) {
       ${upcoming.length ? `
         <div class="stack gap-sm">
           <div class="h-headline">Coming Up</div>
-          ${upcoming.map(workoutRow).join('')}
+          ${upcoming.map((w) => workoutRow(w, teamNameById)).join('')}
         </div>` : ''}
     </div>
   `);

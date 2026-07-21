@@ -41,6 +41,7 @@ export const ICONS = {
   shield: `<svg viewBox="0 0 24 24" fill="none"><path d="M12 3l7 3v6c0 4.5-3 7.7-7 9-4-1.3-7-4.5-7-9V6l7-3z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>`,
   familyLink: `<svg viewBox="0 0 24 24" fill="none"><circle cx="8" cy="7" r="3" stroke="currentColor" stroke-width="1.8"/><circle cx="17" cy="8.5" r="2.2" stroke="currentColor" stroke-width="1.8"/><path d="M2.5 20c1-3.6 3.2-5.5 5.5-5.5s4.5 1.9 5.5 5.5M14 20c.6-2.3 2-3.9 3.5-4.4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>`,
   eyeOff: `<svg viewBox="0 0 24 24" fill="none"><path d="M3 3l18 18M10.6 5.2A10.6 10.6 0 0112 5c5 0 9 3.5 10.5 7-.6 1.4-1.6 2.8-2.8 4M6.5 6.7C4.4 8.1 2.9 10.2 1.5 12c1.5 3.5 5.5 7 10.5 7 1.4 0 2.7-.3 3.9-.7M9.9 10a3 3 0 004.1 4.1" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
+  download: `<svg viewBox="0 0 24 24" fill="none"><path d="M12 3v12m0 0l-4.5-4.5M12 15l4.5-4.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>`,
 };
 
 export const PLATFORM_LABEL = {

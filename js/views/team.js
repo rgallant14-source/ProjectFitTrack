@@ -55,7 +55,7 @@ function reportRow(report) {
     </div>`;
 }
 
-export function renderTeam(container, { onNewWorkout, onOpenAthlete }) {
+export function renderTeam(container, { onNewWorkout, onOpenAthlete, onGenerateInvite, onBulkUpload }) {
   function draw() {
     const roster = rosterMembers();
     const workouts = workoutsForCurrentUser().sort((a, b) => new Date(b.date) - new Date(a.date));
@@ -69,6 +69,22 @@ export function renderTeam(container, { onNewWorkout, onOpenAthlete }) {
           <h1 class="h-hero">Team</h1>
           <button class="pill-action-btn primary" id="btn-new-workout">${ICONS.plus} New Workout</button>
         </div>
+
+        <button class="card card-tappable row gap-md" id="btn-invite-athlete">
+          <span class="card-icon">${ICONS.familyLink}</span>
+          <div class="stack gap-xs" style="flex:1;">
+            <div class="h-headline">Invite an Athlete to a Team</div>
+            <div class="caption">One-time code for an existing athlete to add one of your teams</div>
+          </div>
+        </button>
+
+        <button class="card card-tappable row gap-md" id="btn-bulk-upload">
+          <span class="card-icon">${ICONS.download}</span>
+          <div class="stack gap-xs" style="flex:1;">
+            <div class="h-headline">Bulk Upload Workouts</div>
+            <div class="caption">Download a template, fill it in, and upload many workouts at once</div>
+          </div>
+        </button>
 
         ${reports.length ? `
           <div class="stack gap-sm">
@@ -101,6 +117,8 @@ export function renderTeam(container, { onNewWorkout, onOpenAthlete }) {
     `);
 
     node.querySelector('#btn-new-workout').addEventListener('click', onNewWorkout);
+    node.querySelector('#btn-invite-athlete').addEventListener('click', onGenerateInvite);
+    node.querySelector('#btn-bulk-upload').addEventListener('click', onBulkUpload);
 
     node.querySelectorAll('[data-resolve-report]').forEach((btn) => {
       btn.addEventListener('click', () => {

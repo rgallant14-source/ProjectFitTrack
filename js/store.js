@@ -4,10 +4,10 @@ import {
 } from './mockData.js';
 import {
   makeUser, makeWorkout, makeClip, userAge, uuid, isWorkoutVisibleToUser,
-  makeFamilyLink, makeReport,
+  makeFamilyLink, makeReport, makeTeamInviteCode, randomInviteCode, makeExercise,
 } from './models.js';
 
-const STORAGE_KEY = 'fittrack_state_v8';
+const STORAGE_KEY = 'fittrack_state_v10';
 
 /**
  * This store is the web equivalent of the SwiftUI ViewModels: it holds
@@ -29,12 +29,12 @@ function persist(state) {
   const {
     currentUser, currentOrganization, logs, notificationsEnabled, workouts, clips,
     clipComments, practices, practiceRsvps, conversations, messages,
-    blockedByUser, reports, familyLinks,
+    blockedByUser, reports, familyLinks, teamInviteCodes, rosterByOrg,
   } = state;
   localStorage.setItem(STORAGE_KEY, JSON.stringify({
     currentUser, currentOrganization, logs, notificationsEnabled, workouts, clips,
     clipComments, practices, practiceRsvps, conversations, messages,
-    blockedByUser, reports, familyLinks,
+    blockedByUser, reports, familyLinks, teamInviteCodes, rosterByOrg,
   }));
 }
 
@@ -55,8 +55,11 @@ const state = {
 
   // All known organizations (directory) and their per-org rosters. An
   // admin can manage more than one of these — see currentUser.adminOrgIds.
+  // Rosters are persisted (not just re-seeded) because redeeming an
+  // additional-team invite code adds the athlete to that org's roster —
+  // without this, a page reload would silently drop them back off it.
   organizations: ORGANIZATIONS,
-  rosterByOrg: seedRosterByOrg(),
+  rosterByOrg: persisted?.rosterByOrg ?? seedRosterByOrg(),
 
   // Workouts / logs
   workouts: persisted?.workouts ?? seededWorkouts,
@@ -99,6 +102,10 @@ const state = {
   // for whether that specific parent can see their message activity.
   familyLinks: persisted?.familyLinks ?? [],
 
+  // Single-use codes for attaching an ADDITIONAL team to an existing
+  // athlete account after signup — see makeTeamInviteCode in models.js.
+  teamInviteCodes: persisted?.teamInviteCodes ?? [],
+
   // Navigation
   route: 'dashboard', // dashboard | calendar | clips | team | messages | profile
   selectedDate: new Date().toISOString(),
@@ -126,6 +133,21 @@ export function isAdmin() {
 
 export function isParent() {
   return state.currentUser?.role === 'parent';
+}
+
+// Every team org id an athlete belongs to. Falls back to the older
+// single `organizationId` field for any account created before
+// multi-team support existed, so nothing already in localStorage breaks.
+function athleteOrgIds(user) {
+  if (!user) return [];
+  if (Array.isArray(user.organizationIds) && user.organizationIds.length) return user.organizationIds;
+  return user.organizationId ? [user.organizationId] : [];
+}
+
+export function organizationsForCurrentUser() {
+  return athleteOrgIds(state.currentUser)
+    .map((id) => state.organizations.find((o) => o.id === id))
+    .filter(Boolean);
 }
 
 // ---------- Auth actions ----------
@@ -211,6 +233,7 @@ export async function signUp({ fullName, email, phone = '', role, organizationId
   const dob = role === 'athlete' ? state.verifiedDateOfBirth : new Date(new Date().setFullYear(new Date().getFullYear() - 35)).toISOString();
   const user = makeUser({ id: uuid(), fullName, email, phone, dateOfBirth: dob, role });
   user.adminOrgIds = role === 'admin' ? [] : undefined;
+  user.organizationIds = role === 'athlete' ? [] : undefined;
 
   // A team code was already validated before verification even started
   // (see requestSignupVerification) — apply it now that the account is
@@ -221,7 +244,10 @@ export async function signUp({ fullName, email, phone = '', role, organizationId
     const org = state.organizations.find((o) => o.id === organizationId);
     if (org) {
       state.currentOrganization = org;
-      if (role === 'athlete') user.organizationId = org.id;
+      if (role === 'athlete') {
+        user.organizationId = org.id;
+        user.organizationIds = [org.id];
+      }
     }
   }
 
@@ -257,6 +283,7 @@ export async function logIn({ email, role = 'athlete' }) {
   });
   // Demo admin manages two teams — this is what powers the team switcher.
   if (role === 'admin') user.adminOrgIds = [ORGANIZATIONS[0].id, ORGANIZATIONS[1].id];
+  if (isAthlete) user.organizationIds = [sampleOrg.id];
 
   state.currentUser = user;
   state.currentOrganization = isAthlete ? sampleOrg : (role === 'admin' ? ORGANIZATIONS[0] : null);
@@ -379,14 +406,15 @@ export function linkedAthleteForCurrentParent() {
   if (!isParent() || !state.currentUser) return null;
   const link = state.familyLinks.find((l) => l.parentId === state.currentUser.id);
   if (!link) return null;
-  for (const orgId of Object.keys(state.rosterByOrg)) {
+  const orgIds = Object.keys(state.rosterByOrg).filter((orgId) => state.rosterByOrg[orgId].some((m) => m.id === link.athleteId));
+  for (const orgId of orgIds) {
     const member = state.rosterByOrg[orgId].find((m) => m.id === link.athleteId);
-    if (member) return { ...member, orgId };
+    if (member) return { ...member, orgId, orgIds };
   }
   // The demo athlete (logged in via the athlete quick-login, not seeded
   // in a roster) is a valid link target too.
   if (link.athleteId === 'demo-athlete-1') {
-    return { id: 'demo-athlete-1', fullName: 'Jordan Casey', orgId: sampleOrg.id };
+    return { id: 'demo-athlete-1', fullName: 'Jordan Casey', orgId: sampleOrg.id, orgIds: [sampleOrg.id] };
   }
   return null;
 }
@@ -427,16 +455,118 @@ export function setShareMessagesWithParent(familyLinkId, shareMessages) {
   notify();
 }
 
+// ---------- Additional-team invite codes ----------
+// For attaching a SECOND (or third...) team to an athlete's account after
+// signup. Deliberately NOT the same as the blanket team join codes used at
+// signup — those get shared around a whole roster informally, which is
+// fine for "prove you belong to this team" but too loose for "attach a
+// brand new team to an existing minor's account." These are single-use
+// and can only be minted by someone with real standing: a coach who
+// actually manages the team, or the athlete's own linked parent.
+
+function issueInviteCode(organizationId, issuer) {
+  const invite = makeTeamInviteCode({
+    id: uuid(), code: randomInviteCode(), organizationId,
+    issuedByUserId: issuer.id, issuedByName: issuer.fullName, issuedByRole: issuer.role,
+  });
+  state.teamInviteCodes.push(invite);
+  notify();
+  return invite;
+}
+
+// Admin path: they already manage the org directly, no extra proof needed.
+export function generateTeamInviteCodeForManagedOrg(organizationId) {
+  const user = state.currentUser;
+  if (!user || !isAdmin()) return null;
+  if (!(user.adminOrgIds ?? []).includes(organizationId)) return null;
+  return issueInviteCode(organizationId, user);
+}
+
+// Parent path: parents don't manage any team themselves, so instead they
+// have to supply that team's own blanket join code — the same code a real
+// parent would only have from actually registering their kid there — as
+// the stand-in proof of legitimate association.
+export function generateTeamInviteCodeFromJoinCode(joinCode) {
+  const user = state.currentUser;
+  if (!user || !isParent()) return null;
+  const org = findOrganizationByJoinCode(joinCode);
+  if (!org) {
+    state.errorMessage = "That team code wasn't recognized.";
+    notify();
+    return null;
+  }
+  state.errorMessage = null;
+  return issueInviteCode(org.id, user);
+}
+
+// Unredeemed codes the current user has issued, so a coach/parent can see
+// what's still outstanding (and who it was meant for, if they note that
+// themselves — the code has no built-in recipient, it's just single-use).
+export function activeInviteCodesIssuedByCurrentUser() {
+  const user = state.currentUser;
+  if (!user) return [];
+  return state.teamInviteCodes
+    .filter((i) => i.issuedByUserId === user.id && !i.redeemedByUserId)
+    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+}
+
+// Athlete path: redeem a code to attach that team to their own account.
+export function addAdditionalTeam(code) {
+  const user = state.currentUser;
+  if (!user || user.role !== 'athlete') {
+    state.errorMessage = 'Only athlete accounts can add an additional team.';
+    notify();
+    return false;
+  }
+  const invite = state.teamInviteCodes.find((i) => i.code.toUpperCase() === code.trim().toUpperCase());
+  if (!invite) {
+    state.errorMessage = "That code wasn't recognized. Ask your coach or parent for a new one.";
+    notify();
+    return false;
+  }
+  if (invite.redeemedByUserId) {
+    state.errorMessage = 'That code has already been used.';
+    notify();
+    return false;
+  }
+  const orgIds = athleteOrgIds(user);
+  if (orgIds.includes(invite.organizationId)) {
+    state.errorMessage = "You're already on that team.";
+    notify();
+    return false;
+  }
+
+  user.organizationIds = [...orgIds, invite.organizationId];
+  if (!user.organizationId) user.organizationId = invite.organizationId;
+
+  // Put the athlete on that org's actual roster too — otherwise the coach
+  // who issued the code wouldn't see them show up on their Team tab even
+  // though the athlete now sees that team's workouts.
+  const orgRoster = state.rosterByOrg[invite.organizationId] ?? (state.rosterByOrg[invite.organizationId] = []);
+  if (!orgRoster.some((m) => m.id === user.id)) orgRoster.push({ id: user.id, fullName: user.fullName });
+
+  invite.redeemedByUserId = user.id;
+  invite.redeemedAt = new Date().toISOString();
+  state.errorMessage = null;
+  notify();
+  return true;
+}
+
 // ---------- Workouts / logs ----------
 
 // Admins see every workout in their active org, regardless of assignment,
-// so they can manage the full schedule. Athletes only see workouts assigned
-// to them specifically or to the whole team ("all").
+// so they can manage the full schedule. Athletes see workouts assigned to
+// them specifically or to the whole team ("all") — across EVERY team
+// they're on, not just one, since an athlete's personal training log
+// should be the union of everything assigned to them, not a single
+// switchable context the way an admin's roster view is.
 export function workoutsForCurrentUser() {
-  const orgId = state.currentOrganization?.id ?? null;
-  const orgWorkouts = state.workouts.filter((w) => !orgId || w.organizationId === orgId);
-  if (isAdmin()) return orgWorkouts;
-  return orgWorkouts.filter((w) => isWorkoutVisibleToUser(w, state.currentUser?.id));
+  if (isAdmin()) {
+    const orgId = state.currentOrganization?.id ?? null;
+    return state.workouts.filter((w) => !orgId || w.organizationId === orgId);
+  }
+  const orgIds = athleteOrgIds(state.currentUser);
+  return state.workouts.filter((w) => orgIds.includes(w.organizationId) && isWorkoutVisibleToUser(w, state.currentUser?.id));
 }
 
 export function findLog(exerciseId, workoutId, userId = state.currentUser?.id) {
@@ -529,7 +659,8 @@ export function overallCompletionForUser(userId) {
 export function parentDashboardStats() {
   const athlete = linkedAthleteForCurrentParent();
   if (!athlete) return null;
-  const orgWorkouts = state.workouts.filter((w) => w.organizationId === athlete.orgId && isWorkoutVisibleToUser(w, athlete.id));
+  const orgIds = athlete.orgIds ?? [athlete.orgId];
+  const orgWorkouts = state.workouts.filter((w) => orgIds.includes(w.organizationId) && isWorkoutVisibleToUser(w, athlete.id));
   const pastWorkouts = orgWorkouts.filter((w) => new Date(w.date) <= new Date());
   const logs = logsForUser(athlete.id);
   const completed = pastWorkouts.filter((w) => w.exercises.length && w.exercises.every((ex) => logs.some((l) => l.exerciseId === ex.id)));
@@ -559,6 +690,23 @@ export function createWorkout(draft) {
   state.workouts.push(workout);
   notify();
   return workout;
+}
+
+// Creates one real workout per validated draft from buildWorkoutDrafts()
+// (see js/bulkWorkouts.js) — only ever called after the coach has seen and
+// confirmed the preview, never straight off a raw upload.
+export function commitBulkWorkouts(drafts) {
+  const created = drafts.map((draft) => createWorkout({
+    title: draft.title,
+    date: draft.date,
+    dayLabel: draft.dayLabel,
+    sessionLength: draft.sessionLength,
+    assignedTo: draft.assignedTo,
+    exercises: draft.exercises.map((ex) => makeExercise({
+      id: uuid(), name: ex.name, block: ex.block, prescribed: ex.prescribed || '-', tutorialUrl: ex.tutorialUrl,
+    })),
+  }));
+  return created.length;
 }
 
 export function deleteWorkout(workoutId) {
@@ -688,8 +836,12 @@ export function toggleClipReaction(ownerId, clipId, emoji) {
 // ---------- Practice schedule (simulated 3rd-party sync) ----------
 
 export function practicesForCurrentUser() {
-  const orgId = state.currentOrganization?.id ?? null;
-  return state.practices.filter((p) => !orgId || p.organizationId === orgId);
+  if (isAdmin()) {
+    const orgId = state.currentOrganization?.id ?? null;
+    return state.practices.filter((p) => !orgId || p.organizationId === orgId);
+  }
+  const orgIds = athleteOrgIds(state.currentUser);
+  return state.practices.filter((p) => orgIds.includes(p.organizationId));
 }
 
 export function practiceRsvpStatus(practiceId, userId = state.currentUser?.id) {
@@ -806,10 +958,13 @@ export function messageableContacts() {
     });
     contacts = [...seen.values()];
   } else {
-    const orgId = user.organizationId;
-    const teammates = (state.rosterByOrg[orgId] ?? []).filter((m) => m.id !== user.id);
-    const admins = ORG_ADMIN_DIRECTORY[orgId] ?? [];
-    contacts = [...admins, ...teammates];
+    const orgIds = athleteOrgIds(user);
+    const seen = new Map();
+    orgIds.forEach((orgId) => {
+      (state.rosterByOrg[orgId] ?? []).forEach((m) => { if (m.id !== user.id) seen.set(m.id, m); });
+      (ORG_ADMIN_DIRECTORY[orgId] ?? []).forEach((a) => seen.set(a.id, a));
+    });
+    contacts = [...seen.values()];
   }
 
   return contacts.filter((c) => !isBlockedPair(user.id, c.id));

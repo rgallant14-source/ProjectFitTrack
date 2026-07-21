@@ -5,19 +5,31 @@ import { ICONS } from '../components/icons.js';
 
 function exerciseRowFields(rowId) {
   return `
-    <div class="card stack gap-sm" data-row-id="${rowId}" style="margin-bottom:8px;">
+    <div class="card stack gap-md" data-row-id="${rowId}" style="margin-bottom:8px;">
       <div class="row-between">
-        <span class="caption">Exercise</span>
+        <span class="caption" style="font-weight:700; color:var(--text-primary);">Exercise</span>
         <button class="icon-btn icon-btn-sm danger" data-remove-row>${ICONS.trash}</button>
       </div>
-      <input type="text" placeholder="Exercise name" data-field="name" />
-      <div class="row gap-sm">
-        <select data-field="block" style="flex:1; background:var(--surface-elevated); color:var(--text-primary); border:none; border-radius:12px; padding:12px;">
-          ${BLOCKS.map((b) => `<option value="${b}">${b}</option>`).join('')}
-        </select>
-        <input type="text" placeholder="e.g. 3 x 10" data-field="prescribed" style="flex:1;" />
+      <div class="field">
+        <label for="ex-name-${rowId}">Exercise name</label>
+        <input id="ex-name-${rowId}" type="text" placeholder="e.g. Goblet Squat" data-field="name" />
       </div>
-      <input type="url" placeholder="Tutorial link (optional)" data-field="tutorialUrl" />
+      <div class="row gap-sm">
+        <div class="field" style="flex:1;">
+          <label for="ex-block-${rowId}">Block</label>
+          <select id="ex-block-${rowId}" data-field="block">
+            ${BLOCKS.map((b) => `<option value="${b}">${b}</option>`).join('')}
+          </select>
+        </div>
+        <div class="field" style="flex:1;">
+          <label for="ex-prescribed-${rowId}">Reps / prescription</label>
+          <input id="ex-prescribed-${rowId}" type="text" placeholder="e.g. 3 x 10" data-field="prescribed" />
+        </div>
+      </div>
+      <div class="field">
+        <label for="ex-tutorial-${rowId}">Tutorial link (optional)</label>
+        <input id="ex-tutorial-${rowId}" type="url" placeholder="https://..." data-field="tutorialUrl" />
+      </div>
     </div>`;
 }
 
