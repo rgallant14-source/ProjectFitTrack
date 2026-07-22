@@ -8,7 +8,7 @@ import {
   makeOrganization, generateJoinCode, makeVerificationRequest,
 } from './models.js';
 
-const STORAGE_KEY = 'fittrack_state_v12';
+const STORAGE_KEY = 'fittrack_state_v13';
 
 /**
  * This store is the web equivalent of the SwiftUI ViewModels: it holds
@@ -31,13 +31,13 @@ function persist(state) {
     currentUser, currentOrganization, logs, notificationsEnabled, workouts, clips,
     clipComments, practices, practiceRsvps, conversations, messages,
     blockedByUser, reports, familyLinks, teamInviteCodes, rosterByOrg, organizations,
-    verificationRequests,
+    verificationRequests, adminVerificationByUserId, lastReadAt,
   } = state;
   localStorage.setItem(STORAGE_KEY, JSON.stringify({
     currentUser, currentOrganization, logs, notificationsEnabled, workouts, clips,
     clipComments, practices, practiceRsvps, conversations, messages,
     blockedByUser, reports, familyLinks, teamInviteCodes, rosterByOrg, organizations,
-    verificationRequests,
+    verificationRequests, adminVerificationByUserId, lastReadAt,
   }));
 }
 
@@ -111,6 +111,22 @@ const state = {
   // what this can and can't actually enforce without a backend yet.
   verificationRequests: persisted?.verificationRequests ?? [],
 
+  // The actual verification status registry: userId -> 'pending' |
+  // 'approved'. Deliberately keyed by id and stored separately from the
+  // user object itself (rather than a field on currentUser) so anything
+  // that needs to check ANOTHER user's status live (e.g. "is the coach who
+  // posted this workout verified NOW") has one shared place to look,
+  // instead of only ever knowing the current session's own status. This
+  // is also the shape a real backend's users-table verification column
+  // would naturally take, so the swap-over later is direct.
+  adminVerificationByUserId: persisted?.adminVerificationByUserId ?? {},
+
+  // Per-conversation "I've seen up to here" timestamps, keyed by
+  // `${userId}:${conversationId}` (same pattern as practiceRsvps) since
+  // more than one account can share a browser here. Powers the unread
+  // badges on the tab bar.
+  lastReadAt: persisted?.lastReadAt ?? {},
+
   // Single-use codes for attaching an ADDITIONAL team to an existing
   // athlete account after signup — see makeTeamInviteCode in models.js.
   teamInviteCodes: persisted?.teamInviteCodes ?? [],
@@ -152,7 +168,16 @@ export function isParent() {
 // exactly what that means and how to test this locally in the meantime.
 export function isAdminVerified() {
   if (!isAdmin()) return true; // the gate only applies to admin accounts
-  return state.currentUser?.verificationStatus === 'approved';
+  return state.adminVerificationByUserId[state.currentUser?.id] === 'approved';
+}
+
+// Live lookup for ANY user id — used to tag a workout with the CURRENT
+// verification status of whoever created it, rather than freezing it at
+// post time. Workouts with no createdBy (the seeded demo content) are
+// treated as trusted, since they aren't real user-generated content.
+export function isWorkoutCreatorVerified(workout) {
+  if (!workout.createdBy) return true;
+  return state.adminVerificationByUserId[workout.createdBy] === 'approved';
 }
 
 // ---------- Coach identity/affiliation intake ----------
@@ -196,7 +221,7 @@ export function verificationRequestForCurrentUser() {
 // Delete this function once real backend-issued approval exists.
 export function setAdminVerifiedForTesting(verified) {
   if (!isAdmin() || !state.currentUser) return;
-  state.currentUser.verificationStatus = verified ? 'approved' : 'pending';
+  state.adminVerificationByUserId[state.currentUser.id] = verified ? 'approved' : 'pending';
   notify();
 }
 
@@ -304,7 +329,7 @@ export async function signUp({ fullName, email, phone = '', role, organizationId
   // can't message anyone (see isAdminVerified enforcement below), so a
   // scripted signup produces an inert account rather than one that can
   // reach real athletes.
-  user.verificationStatus = role === 'admin' ? 'pending' : undefined;
+  if (role === 'admin') state.adminVerificationByUserId[user.id] = 'pending';
 
   // A team code was already validated before verification even started
   // (see requestSignupVerification) — apply it now that the account is
@@ -359,7 +384,7 @@ export async function logIn({ email, role = 'athlete' }) {
     // spirit as the demo parent auto-linking with sharing pre-enabled —
     // it's pre-verified so reviewers can see the full messaging experience
     // without also having to fake their way through a real signup.
-    user.verificationStatus = 'approved';
+    state.adminVerificationByUserId[user.id] = 'approved';
   }
   if (isAthlete) user.organizationIds = [sampleOrg.id];
 
@@ -476,42 +501,56 @@ export function switchOrganization(orgId) {
 }
 
 // ---------- Parent / family links ----------
+// Fully many-to-many: one parent can be linked to multiple children (two
+// kids playing different sports), and one child can have multiple linked
+// parents/guardians (both parents, a step-parent, etc). familyLinks is
+// already shaped as a plain list of {parentId, athleteId} pairs, so
+// nothing about the data model needed to change for this — only the
+// functions that used to assume "one link per parent."
 
-// The athlete a parent has linked to. A parent may only ever link one
-// athlete at a time in this simplified model (real household/multi-kid
-// support could extend this to a list later).
-export function linkedAthleteForCurrentParent() {
-  if (!isParent() || !state.currentUser) return null;
-  const link = state.familyLinks.find((l) => l.parentId === state.currentUser.id);
-  if (!link) return null;
-  const orgIds = Object.keys(state.rosterByOrg).filter((orgId) => state.rosterByOrg[orgId].some((m) => m.id === link.athleteId));
+function resolveAthleteById(athleteId) {
+  const orgIds = Object.keys(state.rosterByOrg).filter((orgId) => state.rosterByOrg[orgId].some((m) => m.id === athleteId));
   for (const orgId of orgIds) {
-    const member = state.rosterByOrg[orgId].find((m) => m.id === link.athleteId);
+    const member = state.rosterByOrg[orgId].find((m) => m.id === athleteId);
     if (member) return { ...member, orgId, orgIds };
   }
   // The demo athlete (logged in via the athlete quick-login, not seeded
   // in a roster) is a valid link target too.
-  if (link.athleteId === 'demo-athlete-1') {
+  if (athleteId === 'demo-athlete-1') {
     return { id: 'demo-athlete-1', fullName: 'Jordan Casey', orgId: sampleOrg.id, orgIds: [sampleOrg.id] };
   }
   return null;
 }
 
-export function familyLinkForCurrentParent() {
-  if (!isParent() || !state.currentUser) return null;
-  return state.familyLinks.find((l) => l.parentId === state.currentUser.id) ?? null;
+// Every athlete this parent is linked to — each entry carries its own
+// familyLinkId so callers can act on ONE specific link (e.g. unlink just
+// that child, or toggle message-sharing for just that child) without
+// touching the parent's other links.
+export function linkedAthletesForCurrentParent() {
+  if (!isParent() || !state.currentUser) return [];
+  return state.familyLinks
+    .filter((l) => l.parentId === state.currentUser.id)
+    .map((link) => {
+      const athlete = resolveAthleteById(link.athleteId);
+      return athlete ? { ...athlete, familyLinkId: link.id, shareMessages: link.shareMessages } : null;
+    })
+    .filter(Boolean);
 }
 
 export function linkParentToAthlete(athleteId) {
   if (!isParent() || !state.currentUser) return;
-  // Only one active link per parent in this model — replace, don't stack.
-  state.familyLinks = state.familyLinks.filter((l) => l.parentId !== state.currentUser.id);
+  // Adds a new link rather than replacing — a parent can have more than
+  // one linked child. Guards only against linking the exact same child
+  // twice.
+  const already = state.familyLinks.some((l) => l.parentId === state.currentUser.id && l.athleteId === athleteId);
+  if (already) return;
   state.familyLinks.push(makeFamilyLink({ id: uuid(), parentId: state.currentUser.id, athleteId }));
   notify();
 }
 
-export function unlinkParent(parentId = state.currentUser?.id) {
-  state.familyLinks = state.familyLinks.filter((l) => l.parentId !== parentId);
+// Unlinks ONE specific parent-child pair — not every link this parent has.
+export function unlinkParentFromAthlete(familyLinkId) {
+  state.familyLinks = state.familyLinks.filter((l) => l.id !== familyLinkId);
   notify();
 }
 
@@ -734,22 +773,24 @@ export function overallCompletionForUser(userId) {
 // Read-only stat rollup for a parent's Dashboard-equivalent screen — reuses
 // the same underlying getters athletes/admins already rely on, just scoped
 // to the linked athlete's id/org instead of the current user's.
-export function parentDashboardStats() {
-  const athlete = linkedAthleteForCurrentParent();
-  if (!athlete) return null;
-  const orgIds = athlete.orgIds ?? [athlete.orgId];
-  const orgWorkouts = state.workouts.filter((w) => orgIds.includes(w.organizationId) && isWorkoutVisibleToUser(w, athlete.id));
-  const pastWorkouts = orgWorkouts.filter((w) => new Date(w.date) <= new Date());
-  const logs = logsForUser(athlete.id);
-  const completed = pastWorkouts.filter((w) => w.exercises.length && w.exercises.every((ex) => logs.some((l) => l.exerciseId === ex.id)));
-  return {
-    athlete,
-    streak: currentStreakForUser(athlete.id),
-    logsCount: logs.length,
-    completedCount: completed.length,
-    totalPastWorkouts: pastWorkouts.length,
-    recentLogs: [...logs].sort((a, b) => new Date(b.completedAt) - new Date(a.completedAt)).slice(0, 5),
-  };
+// Read-only stat rollup for a parent's Dashboard-equivalent screen — one
+// entry per linked child, since a parent can have more than one.
+export function parentDashboardStatsList() {
+  return linkedAthletesForCurrentParent().map((athlete) => {
+    const orgIds = athlete.orgIds ?? [athlete.orgId];
+    const orgWorkouts = state.workouts.filter((w) => orgIds.includes(w.organizationId) && isWorkoutVisibleToUser(w, athlete.id));
+    const pastWorkouts = orgWorkouts.filter((w) => new Date(w.date) <= new Date());
+    const logs = logsForUser(athlete.id);
+    const completed = pastWorkouts.filter((w) => w.exercises.length && w.exercises.every((ex) => logs.some((l) => l.exerciseId === ex.id)));
+    return {
+      athlete,
+      streak: currentStreakForUser(athlete.id),
+      logsCount: logs.length,
+      completedCount: completed.length,
+      totalPastWorkouts: pastWorkouts.length,
+      recentLogs: [...logs].sort((a, b) => new Date(b.completedAt) - new Date(a.completedAt)).slice(0, 5),
+    };
+  });
 }
 
 // Lets a coach/admin create a brand new team rather than only ever being
@@ -783,7 +824,6 @@ export function createWorkout(draft) {
     organizationId: state.currentOrganization?.id ?? null,
     assignedTo: draft.assignedTo, // 'all' or array of athlete IDs
     createdBy: state.currentUser?.id ?? null,
-    createdByVerified: isAdminVerified(),
   });
   state.workouts.push(workout);
   notify();
@@ -864,11 +904,10 @@ export function clipFeedEntries() {
   }
 
   if (isParent()) {
-    const athlete = linkedAthleteForCurrentParent();
-    if (!athlete) return [];
-    return clipsForUser(athlete.id)
-      .map((clip) => ({ athleteId: athlete.id, athleteName: athlete.fullName, clip }))
-      .sort((a, b) => new Date(b.clip.addedAt) - new Date(a.clip.addedAt));
+    const athletes = linkedAthletesForCurrentParent();
+    return athletes.flatMap((athlete) =>
+      clipsForUser(athlete.id).map((clip) => ({ athleteId: athlete.id, athleteName: athlete.fullName, clip }))
+    ).sort((a, b) => new Date(b.clip.addedAt) - new Date(a.clip.addedAt));
   }
 
   return clipsForUser(currentUser.id)
@@ -1150,8 +1189,13 @@ export function pendingMessageRequestsForCurrentUser() {
     .filter((c) => c.status === 'pending' && c.initiatorId !== user.id && canModerateRequest(c, user.id))
     .map((c) => {
       const otherId = c.initiatorId;
+      const subjectId = c.participantIds.find((id) => id !== c.initiatorId);
       const thread = state.messages[c.id] ?? [];
-      return { conversation: c, otherId, otherName: c.participantNames?.[otherId] ?? 'Unknown', firstMessage: thread[0] ?? null };
+      return {
+        conversation: c, otherId, otherName: c.participantNames?.[otherId] ?? 'Unknown',
+        subjectId, subjectName: c.participantNames?.[subjectId] ?? 'Unknown',
+        firstMessage: thread[0] ?? null,
+      };
     })
     .sort((a, b) => new Date(b.firstMessage?.createdAt ?? 0) - new Date(a.firstMessage?.createdAt ?? 0));
 }
@@ -1215,21 +1259,86 @@ export function sendMessage(conversationId, text) {
   const thread = state.messages[conversationId] ?? [];
   state.messages[conversationId] = [...thread, message];
   notify();
+  // Sending into a thread implies you've seen everything in it up to now.
+  markConversationRead(conversationId);
 }
+
+// ---------- Notifications / unread badges ----------
+// There's no push here — this is all in-app state read on demand while the
+// tab is open. See the comment block below for exactly which events a real
+// backend-driven push system should hook into once one exists; this is the
+// "would notify" list to build against, not a promise that push exists.
+
+export function markConversationRead(conversationId) {
+  if (!state.currentUser) return;
+  state.lastReadAt[`${state.currentUser.id}:${conversationId}`] = new Date().toISOString();
+  notify();
+}
+
+function isConversationUnread(entry) {
+  if (!entry.lastMessage || entry.lastMessage.senderId === state.currentUser?.id) return false;
+  const readAt = state.lastReadAt[`${state.currentUser?.id}:${entry.conversation.id}`];
+  return !readAt || new Date(entry.lastMessage.createdAt) > new Date(readAt);
+}
+
+// Badge count for the Messages tab: unread conversations (for whichever
+// role's own conversation list applies) plus any pending requests waiting
+// on this user to accept/decline — a request always counts until acted on.
+export function messagesBadgeCount() {
+  if (!state.currentUser) return 0;
+  if (isAdmin() && !isAdminVerified()) return 0; // nothing to surface if messaging is blocked anyway
+  const requestCount = pendingMessageRequestsForCurrentUser().length;
+  const ownEntries = isParent() ? conversationsForLinkedAthletes() : conversationsForCurrentUser();
+  const unreadCount = ownEntries.filter(isConversationUnread).length;
+  return requestCount + unreadCount;
+}
+
+// Badge count for the Team tab: open reports needing a coach's attention.
+export function teamBadgeCount() {
+  if (!isAdmin()) return 0;
+  return reportsVisibleToModerator().length;
+}
+
+// PUSH NOTIFICATION HOOK POINTS (backend planning checklist)
+// -----------------------------------------------------------
+// None of these send anything today — this simply documents, at the one
+// place notification-worthy events already funnel through (notify()),
+// exactly which of them SHOULD trigger a real push once there's a backend
+// to hold subscriptions and deliver them. When that exists, the natural
+// approach is: server-side triggers on the same underlying events below
+// (new message row inserted, new request row inserted, etc.), NOT a
+// reimplementation of this client-side badge logic.
+//
+//   - New message received (sendMessage)               -> push to recipient
+//   - New message request received (sendMessageRequest) -> push to recipient
+//     (and to a linked parent, for a minor recipient)
+//   - Message request accepted (acceptMessageRequest)    -> push to initiator
+//   - Message request declined (declineMessageRequest)   -> push to initiator (optional — declining also blocks, so this one's arguably skippable)
+//   - New report filed (reportContent)                   -> push to the relevant team's coach(es)
+//   - Report resolved (resolveReport)                     -> optional, low priority
+//   - Team invite code redeemed (addAdditionalTeam)        -> push to whoever issued the code
+//   - Workout posted (createWorkout / commitBulkWorkouts)  -> push to assigned athletes (this one's arguably a digest/batched push, not instant, to avoid spamming a bulk upload of 20 workouts as 20 pushes)
+//   - Verification submitted (submitVerificationRequest)   -> push to the (future) review team, not to any in-app user
 
 // Read-only view for a linked parent who has message-sharing turned on by
 // the athlete — never lets the parent send, only observe.
-export function conversationsForLinkedAthlete() {
-  const link = familyLinkForCurrentParent();
-  const athlete = linkedAthleteForCurrentParent();
-  if (!link || !athlete || !link.shareMessages) return [];
-  return state.conversations
-    .filter((c) => c.participantIds.includes(athlete.id) && c.status !== 'pending')
-    .map((c) => {
-      const otherId = c.participantIds.find((id) => id !== athlete.id);
-      const thread = state.messages[c.id] ?? [];
-      const last = thread[thread.length - 1];
-      return { conversation: c, otherId, otherName: c.participantNames?.[otherId] ?? 'Unknown', lastMessage: last ?? null };
-    })
-    .sort((a, b) => new Date(b.lastMessage?.createdAt ?? 0) - new Date(a.lastMessage?.createdAt ?? 0));
+// Read-only view for a linked parent: conversations from every linked
+// child who has message-sharing turned on — never lets the parent send,
+// only observe. Each entry is tagged with which child it belongs to, since
+// a parent can have more than one.
+export function conversationsForLinkedAthletes() {
+  const athletes = linkedAthletesForCurrentParent().filter((a) => a.shareMessages);
+  return athletes.flatMap((athlete) =>
+    state.conversations
+      .filter((c) => c.participantIds.includes(athlete.id) && c.status !== 'pending')
+      .map((c) => {
+        const otherId = c.participantIds.find((id) => id !== athlete.id);
+        const thread = state.messages[c.id] ?? [];
+        const last = thread[thread.length - 1];
+        return {
+          conversation: c, otherId, otherName: c.participantNames?.[otherId] ?? 'Unknown',
+          lastMessage: last ?? null, athleteId: athlete.id, athleteName: athlete.fullName,
+        };
+      })
+  ).sort((a, b) => new Date(b.lastMessage?.createdAt ?? 0) - new Date(a.lastMessage?.createdAt ?? 0));
 }

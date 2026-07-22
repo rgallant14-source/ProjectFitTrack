@@ -1,4 +1,4 @@
-import { subscribe, getState, navigate, isAdmin, isParent, signUp, clearError } from './store.js';
+import { subscribe, getState, navigate, isAdmin, isParent, signUp, clearError, messagesBadgeCount, teamBadgeCount } from './store.js';
 import { renderOnboarding } from './views/onboarding.js';
 import { renderAgeVerification } from './views/ageVerification.js';
 import { renderSignUp } from './views/signup.js';
@@ -28,6 +28,8 @@ const appEl = document.getElementById('app');
 const tabBar = document.getElementById('tab-bar');
 const teamTabBtn = document.getElementById('tab-team');
 const calendarTabBtn = tabBar.querySelector('[data-route="calendar"]');
+const messagesBadgeEl = document.getElementById('badge-messages');
+const teamBadgeEl = document.getElementById('badge-team');
 
 // `authScreen` tracks where we are in the unauthenticated flow:
 // onboarding -> signup (details + team code) -> ageVerify (athletes only)
@@ -55,6 +57,17 @@ function renderAuthedApp() {
   [...tabBar.querySelectorAll('.tab-btn')].forEach((btn) => {
     btn.classList.toggle('active', btn.dataset.route === state.route);
   });
+
+  // Unread/needs-attention badges — see messagesBadgeCount/teamBadgeCount
+  // in store.js for exactly what these count, and the "push notification
+  // hook points" comment there for what a real backend should trigger on.
+  const msgCount = messagesBadgeCount();
+  messagesBadgeEl.textContent = msgCount > 9 ? '9+' : String(msgCount);
+  messagesBadgeEl.classList.toggle('visible', msgCount > 0);
+
+  const teamCount = teamBadgeCount();
+  teamBadgeEl.textContent = teamCount > 9 ? '9+' : String(teamCount);
+  teamBadgeEl.classList.toggle('visible', teamCount > 0);
 
   if (state.route === 'dashboard') {
     if (isParent()) renderParentHome(appEl);

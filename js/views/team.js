@@ -2,7 +2,7 @@ import { h, mount, showToast, formatDate, avatarColorClass, emptyState } from '.
 import {
   rosterMembers, overallCompletionForUser, workoutsForCurrentUser, deleteWorkout,
   adminOrganizations, switchOrganization, getState, reportsVisibleToModerator,
-  resolveReport, directoryName, isAdminVerified,
+  resolveReport, directoryName, isAdminVerified, isWorkoutCreatorVerified,
 } from '../store.js';
 import { ICONS } from '../components/icons.js';
 import { organizationDisplayName } from '../models.js';
@@ -35,7 +35,7 @@ function workoutManageRow(workout) {
       <div class="stack gap-xs" style="flex:1;">
         <div class="row gap-xs" style="align-items:center;">
           <div class="body-text" style="font-weight:600;">${workout.title}</div>
-          ${!workout.createdByVerified ? '<span class="caption" style="color:var(--warning); font-weight:700;">Pending Verification</span>' : ''}
+          ${!isWorkoutCreatorVerified(workout) ? '<span class="caption" style="color:var(--warning); font-weight:700;">Pending Verification</span>' : ''}
         </div>
         <div class="caption">${workout.dayLabel} · ${formatDate(workout.date, { month: 'short', day: 'numeric' })} · Assigned: ${assignedLabel}</div>
       </div>

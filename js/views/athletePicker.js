@@ -1,15 +1,18 @@
 import { h, mount, showToast, avatarColorClass } from '../components/dom.js';
-import { getState, rosterMembers, linkParentToAthlete } from '../store.js';
+import { getState, rosterMembers, linkParentToAthlete, linkedAthletesForCurrentParent } from '../store.js';
 import { ICONS } from '../components/icons.js';
 import { organizationDisplayName } from '../models.js';
 
 // Shared "which athlete is yours?" picker — assumes state.currentOrganization
 // is already set to the right team (either from a join code validated at
 // signup, or from the standalone Profile > Join flow). Used right after a
-// parent's account is created, and from Profile if they need to (re)link.
+// parent's account is created, and from Profile to link additional
+// children (a parent can have more than one, so this doesn't assume it's
+// the first time).
 export function renderAthletePicker(container, { onDone, onClose }) {
   const org = getState().currentOrganization;
-  const roster = rosterMembers();
+  const alreadyLinkedIds = new Set(linkedAthletesForCurrentParent().map((a) => a.id));
+  const roster = rosterMembers().filter((m) => !alreadyLinkedIds.has(m.id));
 
   const node = h(`
     <div class="sheet-backdrop" id="backdrop">
@@ -26,7 +29,7 @@ export function renderAthletePicker(container, { onDone, onClose }) {
               <div class="avatar ${avatarColorClass(m.id)}" style="width:40px;height:40px;font-size:14px;">${m.fullName.split(' ').map((s) => s[0]).join('').toUpperCase()}</div>
               <div class="body-text" style="font-weight:600;">${m.fullName}</div>
             </button>
-          `).join('') : `<div class="caption">No athletes found on this roster yet.</div>`}
+          `).join('') : `<div class="caption">No new athletes found on this roster \u2014 everyone here is already linked to your account.</div>`}
         </div>
       </div>
     </div>

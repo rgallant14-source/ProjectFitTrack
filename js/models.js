@@ -146,15 +146,13 @@ export function makeExercise({ id, name, block, prescribed, tutorialUrl = null }
   return { id, name, block, prescribed, tutorialUrl };
 }
 
-export function makeWorkout({ id, title, date, weekNumber, dayLabel, sessionLength, exercises, organizationId = null, assignedTo = 'all', createdBy = null, createdByVerified = true }) {
+export function makeWorkout({ id, title, date, weekNumber, dayLabel, sessionLength, exercises, organizationId = null, assignedTo = 'all', createdBy = null }) {
   // assignedTo: 'all' (everyone in the org) or an array of specific user IDs.
-  // createdByVerified is a snapshot of the coach's verification status at
-  // the moment this was posted — see isAdminVerified in store.js. It's a
-  // snapshot rather than a live lookup because there's no real user
-  // directory yet (only the current session's own account is ever fully
-  // known); once a backend exists this should become a live lookup instead
-  // so a workout's tag updates if the coach is later approved.
-  return { id, title, date, weekNumber, dayLabel, sessionLength, exercises, organizationId, assignedTo, createdBy, createdByVerified };
+  // Whether the creating coach is verified is looked up live from
+  // store.js's adminVerificationByUserId registry via createdBy — not
+  // stored here — so a workout's "pending verification" tag updates the
+  // moment the coach is approved, instead of staying frozen at post time.
+  return { id, title, date, weekNumber, dayLabel, sessionLength, exercises, organizationId, assignedTo, createdBy };
 }
 
 export function isWorkoutVisibleToUser(workout, userId) {

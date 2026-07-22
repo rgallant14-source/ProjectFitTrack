@@ -1,6 +1,6 @@
 import { h, mount, categoryTag, emptyState } from '../components/dom.js';
 import { ICONS } from '../components/icons.js';
-import { workoutsForCurrentUser, findLog, isAdmin, rosterMembers, overallCompletionForUser, currentStreakForUser, getState, logsForUser, organizationsForCurrentUser } from '../store.js';
+import { workoutsForCurrentUser, findLog, isAdmin, rosterMembers, overallCompletionForUser, currentStreakForUser, getState, logsForUser, organizationsForCurrentUser, isWorkoutCreatorVerified } from '../store.js';
 import { isSameDay, organizationDisplayName } from '../models.js';
 import { equipmentForWorkout, quoteOfTheDay, highlightOfTheDay } from '../dailyContent.js';
 
@@ -12,7 +12,7 @@ function workoutRow(workout, teamNameById) {
         <div class="stack gap-xs" style="flex:1;">
           <div class="row gap-xs" style="align-items:center;">
             <div class="h-headline">${workout.title}</div>
-            ${!workout.createdByVerified ? '<span class="caption" style="color:var(--warning); font-weight:700;">Pending Verification</span>' : ''}
+            ${!isWorkoutCreatorVerified(workout) ? '<span class="caption" style="color:var(--warning); font-weight:700;">Pending Verification</span>' : ''}
           </div>
           <div class="caption">${teamNameById ? teamNameById[workout.organizationId] + ' · ' : ''}${workout.dayLabel} · ${workout.sessionLength} · ${workout.exercises.length} exercises</div>
         </div>

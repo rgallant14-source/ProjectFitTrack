@@ -2,7 +2,7 @@ import { h, mount, showToast, avatarColorClass, emptyState, escapeHtml } from '.
 import {
   getState, isAdmin, isParent, rosterMembers, clipFeedEntries, setClipsFilterAthlete,
   clipCommentsForClip, addClipComment, addClip, toggleClipLike, toggleClipReaction,
-  linkedAthleteForCurrentParent,
+  linkedAthletesForCurrentParent,
 } from '../store.js';
 import { detectClipPlatform, youtubeVideoId, uuid, makeClip } from '../models.js';
 import { PLATFORM_LABEL, ICONS } from '../components/icons.js';
@@ -99,7 +99,7 @@ export function renderClips(container) {
     const entries = clipFeedEntries();
     const roster = rosterMembers();
     const filterId = getState().clipsFilterAthleteId;
-    const linkedAthlete = parent ? linkedAthleteForCurrentParent() : null;
+    const linkedAthletes = parent ? linkedAthletesForCurrentParent() : [];
 
     const node = h(`
       <div class="screen stack gap-lg">
@@ -108,7 +108,7 @@ export function renderClips(container) {
           ${!admin && !parent ? `<button class="pill-action-btn primary" id="btn-add-clip">${ICONS.plus} Add</button>` : ''}
         </div>
 
-        ${parent ? `<div class="caption">Read-only ${linkedAthlete ? `\u2014 viewing ${linkedAthlete.fullName}\u2019s clips` : ''}. You can still like, react, comment, and report.</div>` : ''}
+        ${parent ? `<div class="caption">Read-only${linkedAthletes.length ? ` \u2014 viewing ${linkedAthletes.length > 1 ? 'your athletes\u2019' : linkedAthletes[0].fullName + '\u2019s'} clips` : ''}. You can still like, react, comment, and report.</div>` : ''}
 
         ${admin ? `
           <div class="row-wrap gap-sm" id="athlete-filter">
@@ -120,11 +120,11 @@ export function renderClips(container) {
         ` : ''}
 
         ${entries.length
-          ? entries.map((entry) => clipPost(entry, { showAthleteName: admin })).join('')
+          ? entries.map((entry) => clipPost(entry, { showAthleteName: admin || linkedAthletes.length > 1 })).join('')
           : `<div class="card">${emptyState({
               icon: ICONS.film,
-              title: parent && !linkedAthlete ? 'No athlete linked yet' : 'No clips yet',
-              subtitle: parent && !linkedAthlete ? 'Link your athlete from your Profile tab to see their clips here.' : (admin ? 'Nothing posted by your athletes yet.' : 'Add a YouTube skill video, or a Veo/Trace game clip, to get feedback from your coach.'),
+              title: parent && !linkedAthletes.length ? 'No athlete linked yet' : 'No clips yet',
+              subtitle: parent && !linkedAthletes.length ? 'Link your athlete from your Profile tab to see their clips here.' : (admin ? 'Nothing posted by your athletes yet.' : 'Add a YouTube skill video, or a Veo/Trace game clip, to get feedback from your coach.'),
             })}</div>`}
       </div>
     `);

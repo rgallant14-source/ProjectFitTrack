@@ -1,8 +1,8 @@
 import { h, mount, showToast, avatarColorClass, emptyState } from '../components/dom.js';
 import {
   getState, logOut, setNotificationsEnabled, isAdmin, isParent, logsForUser, clipsForUser,
-  workoutsForCurrentUser, navigate, currentStreakForUser, linkedAthleteForCurrentParent,
-  unlinkParent, parentLinksForAthlete, setShareMessagesWithParent, blockedUserIds,
+  workoutsForCurrentUser, navigate, currentStreakForUser, linkedAthletesForCurrentParent,
+  unlinkParentFromAthlete, parentLinksForAthlete, setShareMessagesWithParent, blockedUserIds,
   unblockUser, directoryName, organizationsForCurrentUser, adminOrganizations,
   isAdminVerified, setAdminVerifiedForTesting,
 } from '../store.js';
@@ -34,7 +34,7 @@ export function renderProfile(container, { onJoinOrg, onEditProfile, onViewHisto
     const streak = athlete ? currentStreakForUser(user.id) : 0;
     const social = user.socialLinks || {};
 
-    const linkedAthlete = parent ? linkedAthleteForCurrentParent() : null;
+    const linkedAthletes = parent ? linkedAthletesForCurrentParent() : [];
     const myParentLinks = athlete ? parentLinksForAthlete(user.id) : [];
     const myBlocked = blockedUserIds(user.id);
     const myTeams = athlete ? organizationsForCurrentUser() : [];
@@ -118,16 +118,17 @@ export function renderProfile(container, { onJoinOrg, onEditProfile, onViewHisto
         ${parent ? `
           <div class="stack gap-sm">
             <div class="h-headline">Family</div>
-            ${linkedAthlete ? `
-              <div class="card row gap-md">
-                <div class="avatar ${avatarColorClass(linkedAthlete.id)}" style="width:44px;height:44px;font-size:15px;flex-shrink:0;">${linkedAthlete.fullName.split(' ').map((s) => s[0]).join('').toUpperCase()}</div>
+            ${linkedAthletes.map((athlete) => `
+              <div class="card row gap-md" data-family-link-id="${athlete.familyLinkId}">
+                <div class="avatar ${avatarColorClass(athlete.id)}" style="width:44px;height:44px;font-size:15px;flex-shrink:0;">${athlete.fullName.split(' ').map((s) => s[0]).join('').toUpperCase()}</div>
                 <div class="stack gap-xs" style="flex:1;">
-                  <div class="body-text" style="font-weight:600;">${linkedAthlete.fullName}</div>
-                  <div class="caption">${state.currentOrganization ? organizationDisplayName(state.currentOrganization) : ''}</div>
+                  <div class="body-text" style="font-weight:600;">${athlete.fullName}</div>
+                  <div class="caption">${organizationDisplayName(state.organizations.find((o) => o.id === athlete.orgId))}</div>
                 </div>
-                <button class="btn btn-secondary btn-pill-sm" id="btn-unlink">Unlink</button>
+                <button class="btn btn-secondary btn-pill-sm" data-unlink-athlete="${athlete.familyLinkId}" data-athlete-name="${athlete.fullName}">Unlink</button>
               </div>
-            ` : `<button class="card card-tappable" id="btn-join-org" style="color:var(--accent-2); font-weight:600;">+ Link Your Athlete</button>`}
+            `).join('')}
+            <button class="card card-tappable" id="btn-join-org" style="color:var(--accent-2); font-weight:600;">+ ${linkedAthletes.length ? 'Link Another Athlete' : 'Link Your Athlete'}</button>
             <button class="card card-tappable row gap-md" id="btn-generate-invite">
               <span class="card-icon">${ICONS.familyLink}</span>
               <div class="stack gap-xs" style="flex:1;">
@@ -222,11 +223,13 @@ export function renderProfile(container, { onJoinOrg, onEditProfile, onViewHisto
     });
     node.querySelector('#btn-add-team')?.addEventListener('click', onAddTeam);
     node.querySelector('#btn-generate-invite')?.addEventListener('click', onGenerateInvite);
-    node.querySelector('#btn-unlink')?.addEventListener('click', () => {
-      if (!confirm(`Unlink from ${linkedAthlete?.fullName}? You'll stop seeing their activity here.`)) return;
-      unlinkParent();
-      showToast('Unlinked');
-      draw();
+    node.querySelectorAll('[data-unlink-athlete]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        if (!confirm(`Unlink from ${btn.dataset.athleteName}? You'll stop seeing their activity here.`)) return;
+        unlinkParentFromAthlete(btn.dataset.unlinkAthlete);
+        showToast('Unlinked');
+        draw();
+      });
     });
 
     node.querySelectorAll('[data-share-toggle]').forEach((toggle) => {

@@ -1,5 +1,5 @@
 import { h, mount, formatDate, categoryTag, emptyState } from '../components/dom.js';
-import { getState, workoutsForCurrentUser, setSelectedDate, practicesForCurrentUser, practiceRsvpStatus, setPracticeRsvp, isAdmin, organizationsForCurrentUser } from '../store.js';
+import { getState, workoutsForCurrentUser, setSelectedDate, practicesForCurrentUser, practiceRsvpStatus, setPracticeRsvp, isAdmin, organizationsForCurrentUser, isWorkoutCreatorVerified } from '../store.js';
 import { isSameDay, organizationDisplayName } from '../models.js';
 import { ICONS } from '../components/icons.js';
 
@@ -99,7 +99,7 @@ export function renderCalendar(container, { onOpenWorkout }) {
                 <div class="stack gap-xs" style="flex:1;">
                   <div class="row gap-xs" style="align-items:center;">
                     <div class="h-headline">${w.title}</div>
-                    ${!w.createdByVerified ? '<span class="caption" style="color:var(--warning); font-weight:700;">Pending Verification</span>' : ''}
+                    ${!isWorkoutCreatorVerified(w) ? '<span class="caption" style="color:var(--warning); font-weight:700;">Pending Verification</span>' : ''}
                   </div>
                   <div class="caption">${teamNameById ? teamNameById[w.organizationId] + ' · ' : ''}${w.dayLabel} · ${w.sessionLength} · ${w.exercises.length} exercises</div>
                 </div>

@@ -3,7 +3,7 @@ import {
   getState, isParent, isAdmin, isAdminVerified, navigate, conversationsForCurrentUser, messagesForConversation, sendMessage,
   messageableContacts, getOrCreateConversation, requestableProspects, sendMessageRequest,
   pendingMessageRequestsForCurrentUser, acceptMessageRequest, declineMessageRequest,
-  blockUser, conversationsForLinkedAthlete, linkedAthleteForCurrentParent,
+  blockUser, conversationsForLinkedAthletes, linkedAthletesForCurrentParent, markConversationRead,
 } from '../store.js';
 import { ICONS } from '../components/icons.js';
 import { openActionMenu, openReportSheet } from '../components/moderation.js';
@@ -223,6 +223,7 @@ export function renderMessages(container) {
     const otherId = entry?.otherId;
     const otherName = entry?.otherName ?? 'Conversation';
     const thread = messagesForConversation(activeConversationId);
+    markConversationRead(activeConversationId);
 
     const node = h(`
       <div class="screen stack gap-md" style="height:calc(100vh - 200px); display:flex;">
@@ -298,8 +299,10 @@ export function renderMessages(container) {
 }
 
 // Read-only view for a linked parent: their own pending-request approvals
-// (for their athlete's incoming requests), plus — only if the athlete has
-// turned message-sharing on — a read-only look at the athlete's threads.
+// across every linked child, plus — only for children who've turned
+// message-sharing on — a read-only look at those threads. Each item is
+// tagged with which child it belongs to, since a parent can have more
+// than one.
 function renderParentMessages(container) {
   let mode = 'list';
   let activeConversationId = null;
@@ -310,24 +313,26 @@ function renderParentMessages(container) {
   }
 
   function drawList() {
-    const athlete = linkedAthleteForCurrentParent();
+    const athletes = linkedAthletesForCurrentParent();
     const requests = pendingMessageRequestsForCurrentUser();
-    const entries = conversationsForLinkedAthlete();
+    const entries = conversationsForLinkedAthletes();
+    const sharingOffCount = athletes.filter((a) => !a.shareMessages).length;
 
     const node = h(`
       <div class="screen stack gap-lg">
         <h1 class="h-hero">Messages</h1>
-        <div class="caption">Read-only — you're viewing this as ${athlete ? athlete.fullName + '\u2019s' : 'your athlete\u2019s'} parent/guardian.</div>
+        <div class="caption">Read-only \u2014 you're viewing this as a parent/guardian.</div>
 
         ${requests.length ? `
           <div class="stack gap-sm">
-            <div class="h-headline">Message Requests for ${athlete?.fullName ?? 'your athlete'}</div>
+            <div class="h-headline">Message Requests</div>
             ${requests.map((r) => `
               <div class="card stack gap-sm" data-request-id="${r.conversation.id}">
                 <div class="row gap-md">
                   <div class="avatar ${avatarColorClass(r.otherId)}" style="width:40px;height:40px;font-size:14px;flex-shrink:0;">${initialsOf(r.otherName)}</div>
                   <div class="stack gap-xs" style="flex:1; min-width:0;">
                     <div class="body-text" style="font-weight:600;">${r.otherName}</div>
+                    ${athletes.length > 1 ? `<div class="caption">For ${r.subjectName}</div>` : ''}
                     <div class="caption">${escapeHtml(r.firstMessage?.text ?? '')}</div>
                   </div>
                 </div>
@@ -342,13 +347,14 @@ function renderParentMessages(container) {
 
         <div class="stack gap-sm">
           <div class="h-headline">Conversations</div>
-          ${!athlete ? `<div class="card">${emptyState({ icon: ICONS.familyLink, title: 'No athlete linked yet', subtitle: 'Link your athlete from your Profile tab to see this.' })}</div>`
-            : !entries.length ? `<div class="card">${emptyState({ icon: ICONS.eyeOff, title: 'Message sharing is off', subtitle: `${athlete.fullName} hasn't turned on sharing their messages with you. You'll still see and approve any new message requests above.` })}</div>`
+          ${!athletes.length ? `<div class="card">${emptyState({ icon: ICONS.familyLink, title: 'No athlete linked yet', subtitle: 'Link your athlete from your Profile tab to see this.' })}</div>`
+            : !entries.length ? `<div class="card">${emptyState({ icon: ICONS.eyeOff, title: 'Message sharing is off', subtitle: sharingOffCount === athletes.length ? "None of your linked athletes have turned on sharing their messages with you yet. You'll still see and approve any new message requests above." : "None of your athletes with sharing on have any conversations yet." })}</div>`
             : entries.map((entry) => `
               <button class="card card-tappable row gap-md" data-conversation-id="${entry.conversation.id}" style="margin-bottom:8px;">
                 <div class="avatar ${avatarColorClass(entry.otherId)}" style="width:44px;height:44px;font-size:15px;flex-shrink:0;">${initialsOf(entry.otherName)}</div>
                 <div class="stack gap-xs" style="flex:1; min-width:0;">
                   <div class="body-text" style="font-weight:600;">${entry.otherName}</div>
+                  ${athletes.length > 1 ? `<div class="caption">${entry.athleteName}</div>` : ''}
                   <div class="caption" style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${entry.lastMessage ? escapeHtml(entry.lastMessage.text) : 'No messages yet'}</div>
                 </div>
                 ${entry.lastMessage ? `<div class="caption" style="flex-shrink:0;">${timeAgo(entry.lastMessage.createdAt)}</div>` : ''}
@@ -384,10 +390,10 @@ function renderParentMessages(container) {
   }
 
   function drawThread() {
-    const athlete = linkedAthleteForCurrentParent();
-    const entry = conversationsForLinkedAthlete().find((e) => e.conversation.id === activeConversationId);
+    const entry = conversationsForLinkedAthletes().find((e) => e.conversation.id === activeConversationId);
     const otherName = entry?.otherName ?? 'Conversation';
     const thread = messagesForConversation(activeConversationId);
+    markConversationRead(activeConversationId);
 
     const node = h(`
       <div class="screen stack gap-md" style="height:calc(100vh - 200px); display:flex;">
@@ -396,11 +402,11 @@ function renderParentMessages(container) {
           <div class="h-headline screen-title">${otherName}</div>
           <span style="width:40px;"></span>
         </div>
-        <div class="caption">Viewing ${athlete?.fullName ?? 'your athlete'}\u2019s conversation \u2014 read only.</div>
+        <div class="caption">Viewing ${entry?.athleteName ?? 'your athlete'}\u2019s conversation \u2014 read only.</div>
 
         <div class="stack gap-sm" id="thread-scroll" style="flex:1; overflow-y:auto; padding:4px;">
           ${thread.length ? thread.map((m) => {
-            const mine = m.senderId === athlete?.id;
+            const mine = m.senderId === entry?.athleteId;
             return `
               <div style="display:flex; justify-content:${mine ? 'flex-end' : 'flex-start'};">
                 <div style="max-width:75%; background:${mine ? 'var(--gradient-primary)' : 'var(--surface-elevated)'}; color:${mine ? '#fff' : 'var(--text-primary)'}; padding:10px 14px; border-radius:16px; ${mine ? 'border-bottom-right-radius:4px;' : 'border-bottom-left-radius:4px;'}">
